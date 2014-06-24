@@ -715,6 +715,34 @@ werr:
     return REDIS_ERR;
 }
 
+robj *rdbLoadTavgObject(rio *rdb) {
+	int isencoded;
+	uint32_t len;
+	sds val;
+
+	len = rdbLoadLen(rdb, &isencoded);
+	if (isencoded) {
+		switch (len) {
+		case REDIS_RDB_ENC_INT8:
+		case REDIS_RDB_ENC_INT16:
+		case REDIS_RDB_ENC_INT32:
+			return rdbLoadIntegerObject(rdb, len, encode);
+		case REDIS_RDB_ENC_LZF:
+			return rdbLoadLzfStringObject(rdb);
+		default:
+			redisPanic("Unknown RDB encoding type");
+		}
+	}
+
+	if (len == REDIS_RDB_LENERR) return NULL;
+	val = sdsnewlen(NULL, len);
+	if (len && rioRead(rdb, val, len) == 0) {
+		sdsfree(val);
+		return NULL;
+	}
+	return createObject(REDIS_STRING, val);
+}
+
 int rdbSaveBackground(char *filename) {
     pid_t childpid;
     long long start;
@@ -1024,6 +1052,10 @@ robj *rdbLoadObject(int rdbtype, rio *rdb) {
                 redisPanic("Unknown encoding");
                 break;
         }
+	}
+	else if (rdbtype == REDIS_RDB_TYPE_TAVG){
+		if ((o = rdbLoadTavgObject(rdb)) == NULL) return NULL;
+		o = tryObjectEncoding(o);
     } else {
         redisPanic("Unknown object type");
     }
