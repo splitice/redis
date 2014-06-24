@@ -93,7 +93,7 @@ void tacalcCommand(redisClient *c){
 	if ((getLongFromObjectOrReply(c, c->argv[2], &bucket_interval, NULL) != REDIS_OK))
 		return;
 
-	if ((getLongFromObjectOrReply(c, c->argv[4], &ts, NULL) != REDIS_OK))
+	if ((getLongFromObjectOrReply(c, c->argv[3], &ts, NULL) != REDIS_OK))
 		return;
 
 	time_average* ta = (time_average*)o->ptr;
