@@ -15,7 +15,7 @@ robj *createTaObject(void) {
 robj *taTypeLookupWriteOrCreate(redisClient *c, robj *key) {
 	robj *o = lookupKeyWrite(c->db, key);
 	if (o == NULL) {
-		o = createTahitObject();
+		o = createTaObject();
 		dbAdd(c->db, key, o);
 	}
 	else {
