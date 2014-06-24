@@ -36,10 +36,13 @@ void tahitCommand(redisClient *c) {
 	if ((getLongFromObjectOrReply(c, c->argv[3], &ts, NULL) != REDIS_OK))
 		return;
 	
+	addReplyMultiBulkLen(c, c->argc - 4);
+
 	for (int i = 4; i < c->argc; i++){
 		robj *o = taTypeLookupWriteOrCreate(c, c->argv[i]);
 
-		if (o == NULL || checkType(c, o, REDIS_TAVG)) {
+		if (o == NULL || o->type != REDIS_TAVG) {
+			addReply(c, shared.nullbulk);
 			continue;
 		}
 
@@ -78,7 +81,7 @@ void tahitCommand(redisClient *c) {
 			sum += ta->buckets[i];
 		}
 
-		addReplyLongLong(c, sum);
+		addReplyBulk(c, sum);
 	}
 }
 
