@@ -83,9 +83,9 @@ void tahitCommand(redisClient *c) {
 }
 
 void tacalcCommand(redisClient *c){
-	robj *o = lookupKeyRead(c, c->argv[1]);
-	if (o == NULL || o->type != REDIS_TAVG) {
-		return;
+	robj *o;
+	if ((o = lookupKeyReadOrReply(c, c->argv[1], shared.nullbulk)) == NULL){
+		addReply(c, shared.nokeyerr);
 	}
 
 	long bucket_interval, ts;
