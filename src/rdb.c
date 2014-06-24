@@ -85,7 +85,7 @@ robj *rdbLoadTavgObject(rio *rdb) {
 	for (int i = 0; i < TA_BUCKETS; i++){
 		if (rioRead(rdb, ptr, 4) == 0) return NULL;
 	}
-	return createObject(REDIS_TAVG, val);
+	return createObject(REDIS_TAVG, zl);
 }
 
 /* Saves an encoded length. The first two bits in the first byte are used to
