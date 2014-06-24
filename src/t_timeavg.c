@@ -84,7 +84,7 @@ void tahitCommand(redisClient *c) {
 
 void tacalcCommand(redisClient *c){
 	robj *o;
-	if ((o = lookupKeyReadOrReply(c, c->argv[1], shared.nullbulk)) == NULL || checkType(c, o, REDIS_TAVG)){
+	if ((o = lookupKeyReadOrReply(c, c->argv[1], shared.nokeyerr)) == NULL || checkType(c, o, REDIS_TAVG)){
 		return;
 	}
 
