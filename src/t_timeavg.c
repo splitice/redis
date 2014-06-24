@@ -108,7 +108,6 @@ void tacalcCommand(redisClient *c){
 
 		//If we need to clear all buckets, then the value will be 0
 		if (clear_buckets < TA_BUCKETS){
-		{
 			unsigned int bucketN = (ts / bucket_interval) % TA_BUCKETS;
 			for (unsigned int i = clear_buckets; i < TA_BUCKETS; i++){
 				unsigned int k = (bucketN - i) % TA_BUCKETS;
@@ -117,6 +116,5 @@ void tacalcCommand(redisClient *c){
 		}
 	}
 	
-
 	addReplyLongLong(c, sum);
 }
