@@ -31,6 +31,7 @@
 #include "lzf.h"    /* LZF compression library */
 #include "zipmap.h"
 #include "endianconv.h"
+#include "timeavg.h"
 
 #include <math.h>
 #include <sys/types.h>
