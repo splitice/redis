@@ -42,7 +42,6 @@ void tahitCommand(redisClient *c) {
 		return;
 
 	if (o == NULL || checkType(c, o, REDIS_TAVG)) {
-		addReply(c, shared.ok);
 		return;
 	}
 
