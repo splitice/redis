@@ -76,6 +76,17 @@ long long rdbLoadMillisecondTime(rio *rdb) {
     return (long long)t64;
 }
 
+robj *rdbLoadTavgObject(rio *rdb) {
+	time_average *zl = zmalloc(sizeof(time_average));
+	if (rioRead(rdb, &zl->last_updated, 4) == 0) return NULL;
+
+	uint32_t* ptr = zl->buckets;
+	for (int i = 0; i < TA_BUCKETS; i++){
+		if (rioRead(rdb, ptr, 4) == 0) return NULL;
+	}
+	return createObject(REDIS_TAVG, val);
+}
+
 /* Saves an encoded length. The first two bits in the first byte are used to
  * hold the encoding type. See the REDIS_RDB_* definitions for more information
  * on the types of encoding. */
@@ -713,34 +724,6 @@ werr:
     redisLog(REDIS_WARNING,"Write error saving DB on disk: %s", strerror(errno));
     if (di) dictReleaseIterator(di);
     return REDIS_ERR;
-}
-
-robj *rdbLoadTavgObject(rio *rdb) {
-	int isencoded;
-	uint32_t len;
-	sds val;
-
-	len = rdbLoadLen(rdb, &isencoded);
-	if (isencoded) {
-		switch (len) {
-		case REDIS_RDB_ENC_INT8:
-		case REDIS_RDB_ENC_INT16:
-		case REDIS_RDB_ENC_INT32:
-			return rdbLoadIntegerObject(rdb, len, encode);
-		case REDIS_RDB_ENC_LZF:
-			return rdbLoadLzfStringObject(rdb);
-		default:
-			redisPanic("Unknown RDB encoding type");
-		}
-	}
-
-	if (len == REDIS_RDB_LENERR) return NULL;
-	val = sdsnewlen(NULL, len);
-	if (len && rioRead(rdb, val, len) == 0) {
-		sdsfree(val);
-		return NULL;
-	}
-	return createObject(REDIS_STRING, val);
 }
 
 int rdbSaveBackground(char *filename) {

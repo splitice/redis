@@ -1,19 +1,13 @@
 #include "redis.h"
 #include <math.h>
-
-#define TA_BUCKETS 20
-
-struct time_average {
-	unsigned int last_updated;
-	unsigned int buckets[TA_BUCKETS];
-}; 
+#include "timeavg.h"
 
 static int taEntry(unsigned char *p) {
 	return sizeof(time_average);
 }
 
 robj *createTaObject(void) {
-	unsigned char *zl = new time_average;
+	unsigned char *zl = zcalloc(sizeof(time_average));
 	robj *o = createObject(REDIS_TAVG, zl);
 	return o;
 }
