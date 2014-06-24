@@ -96,12 +96,18 @@ void tacalcCommand(redisClient *c){
 	time_average* ta = (time_average*)o->ptr;
 
 	int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
-	unsigned int clear_buckets = updated_ago / bucket_interval;
-	unsigned int bucketN = (ts / bucket_interval) % TA_BUCKETS;
-
-	if (clear_buckets >= TA_BUCKETS){
-		clear_buckets = TA_BUCKETS - 1;
+	unsigned int clear_buckets;
+	if (updated_ago < 0){
+		clear_buckets = 0;
 	}
+	else{
+		clear_buckets = updated_ago / bucket_interval;
+
+		if (clear_buckets >= TA_BUCKETS){
+			clear_buckets = TA_BUCKETS - 1;
+		}
+	}
+	unsigned int bucketN = (ts / bucket_interval) % TA_BUCKETS;
 
 	unsigned long sum = 0;
 	for (unsigned int i = clear_buckets; i < TA_BUCKETS; i++){
