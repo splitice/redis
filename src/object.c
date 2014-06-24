@@ -280,7 +280,7 @@ void freeHashObject(robj *o) {
 }
 
 void freeTavgObject(robj *o) {
-	free(o->ptr);
+	zfree(o->ptr);
 }
 
 void incrRefCount(robj *o) {

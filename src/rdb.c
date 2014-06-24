@@ -610,12 +610,12 @@ int rdbSaveObject(rio *rdb, robj *o) {
 
 		time_average* ta = (time_average*)o->ptr;
 
-		if (rdbWriteRaw(&rdb, &ta->last_updated, 4) == -1) return -1;
+		if (rdbWriteRaw(rdb, &ta->last_updated, 4) == -1) return -1;
 
 		uint32_t* ptr = ta->buckets;
 
 		for (int i = 0; i < TA_BUCKETS; i++){
-			if (rdbWriteRaw(&rdb, ptr, 4) == -1) return -1;
+			if (rdbWriteRaw(rdb, ptr, 4) == -1) return -1;
 			ptr += 4;
 		}
 
