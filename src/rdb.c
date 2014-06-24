@@ -471,6 +471,8 @@ int rdbSaveObjectType(rio *rdb, robj *o) {
             return rdbSaveType(rdb,REDIS_RDB_TYPE_HASH);
         else
             redisPanic("Unknown hash encoding");
+	case REDIS_TAVG:
+		return rdbSaveType(rdb, REDIS_RDB_TYPE_TAVG);
     default:
         redisPanic("Unknown object type");
     }
@@ -600,7 +602,11 @@ int rdbSaveObject(rio *rdb, robj *o) {
             redisPanic("Unknown hash encoding");
         }
 
-    } else {
+	}
+	else if (o->type == REDIS_TAVG) {
+
+	}
+	else {
         redisPanic("Unknown object type");
     }
     return nwritten;
