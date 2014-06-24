@@ -84,6 +84,7 @@ robj *rdbLoadTavgObject(rio *rdb) {
 	uint32_t* ptr = zl->buckets;
 	for (int i = 0; i < TA_BUCKETS; i++){
 		if (rioRead(rdb, ptr, 4) == 0) return NULL;
+		ptr += 4;
 	}
 	return createObject(REDIS_TAVG, zl);
 }
@@ -604,7 +605,21 @@ int rdbSaveObject(rio *rdb, robj *o) {
 
 	}
 	else if (o->type == REDIS_TAVG) {
+		/* Save a time average value */
+		size_t l = sizeof(time_average);
 
+		time_average* ta = (time_average*)o->ptr;
+
+		if (rdbWriteRaw(&rdb, &ta->last_updated, 4) == -1) return -1;
+
+		uint32_t* ptr = ta->buckets;
+
+		for (int i = 0; i < TA_BUCKETS; i++){
+			if (rdbWriteRaw(&rdb, ptr, 4) == -1) return -1;
+			ptr += 4;
+		}
+
+		nwritten += l;
 	}
 	else {
         redisPanic("Unknown object type");
