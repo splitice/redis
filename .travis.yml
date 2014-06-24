@@ -1,6 +1,6 @@
 language: c
 install:
-- apt-get install tcl
+- sudo apt-get install tcl
 script:
 - cd src
 - make
