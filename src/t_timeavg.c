@@ -2,10 +2,6 @@
 #include <math.h>
 #include "timeavg.h"
 
-static int taEntry(unsigned char *p) {
-	return sizeof(time_average);
-}
-
 robj *createTaObject(void) {
 	unsigned char *zl = zcalloc(sizeof(time_average));
 	robj *o = createObject(REDIS_TAVG, zl);
