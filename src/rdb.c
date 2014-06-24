@@ -79,7 +79,7 @@ long long rdbLoadMillisecondTime(rio *rdb) {
 
 robj *rdbLoadTavgObject(rio *rdb) {
     time_average *zl = zmalloc(sizeof(time_average));
-	if (rioRead(rdb, &zl->last_updated, 4) == sizeof(uint32_t)) return NULL;
+	if (rioRead(rdb, &zl->last_updated, sizeof(uint32_t)) == 0) return NULL;
 	if (rioRead(rdb, zl->buckets, sizeof(uint32_t) * TA_BUCKETS) == 0) return NULL;
 
     return createObject(REDIS_TAVG, zl);
