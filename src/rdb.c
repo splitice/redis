@@ -1060,7 +1060,6 @@ robj *rdbLoadObject(int rdbtype, rio *rdb) {
 	}
 	else if (rdbtype == REDIS_RDB_TYPE_TAVG){
 		if ((o = rdbLoadTavgObject(rdb)) == NULL) return NULL;
-		o = tryObjectEncoding(o);
     } else {
         redisPanic("Unknown object type");
     }
