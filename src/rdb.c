@@ -78,15 +78,11 @@ long long rdbLoadMillisecondTime(rio *rdb) {
 }
 
 robj *rdbLoadTavgObject(rio *rdb) {
-	time_average *zl = zmalloc(sizeof(time_average));
-	if (rioRead(rdb, &zl->last_updated, 4) == 0) return NULL;
+    time_average *zl = zmalloc(sizeof(time_average));
+	if (rioRead(rdb, &zl->last_updated, 4) == sizeof(uint32_t)) return NULL;
+	if (rioRead(rdb, zl->buckets, sizeof(uint32_t) * TA_BUCKETS) == 0) return NULL;
 
-	uint32_t* ptr = zl->buckets;
-	for (int i = 0; i < TA_BUCKETS; i++){
-		if (rioRead(rdb, ptr, 4) == 0) return NULL;
-		ptr += 4;
-	}
-	return createObject(REDIS_TAVG, zl);
+    return createObject(REDIS_TAVG, zl);
 }
 
 /* Saves an encoded length. The first two bits in the first byte are used to
@@ -472,8 +468,8 @@ int rdbSaveObjectType(rio *rdb, robj *o) {
             return rdbSaveType(rdb,REDIS_RDB_TYPE_HASH);
         else
             redisPanic("Unknown hash encoding");
-	case REDIS_TAVG:
-		return rdbSaveType(rdb, REDIS_RDB_TYPE_TAVG);
+    case REDIS_TAVG:
+        return rdbSaveType(rdb, REDIS_RDB_TYPE_TAVG);
     default:
         redisPanic("Unknown object type");
     }
@@ -584,7 +580,7 @@ int rdbSaveObject(rio *rdb, robj *o) {
         } else if (o->encoding == REDIS_ENCODING_HT) {
             dictIterator *di = dictGetIterator(o->ptr);
             dictEntry *de;
-
+				
             if ((n = rdbSaveLen(rdb,dictSize((dict*)o->ptr))) == -1) return -1;
             nwritten += n;
 
@@ -603,25 +599,20 @@ int rdbSaveObject(rio *rdb, robj *o) {
             redisPanic("Unknown hash encoding");
         }
 
-	}
-	else if (o->type == REDIS_TAVG) {
-		/* Save a time average value */
-		size_t l = sizeof(time_average);
+    }
+    else if (o->type == REDIS_TAVG) {
+        /* Save a time average value */
+        size_t l = sizeof(time_average);
 
-		time_average* ta = (time_average*)o->ptr;
+        time_average* ta = (time_average*)o->ptr;
 
-		if (rdbWriteRaw(rdb, &ta->last_updated, 4) == -1) return -1;
+		if (rdbWriteRaw(rdb, &ta->last_updated, sizeof(uint32_t)) == -1) return -1;
 
-		uint32_t* ptr = ta->buckets;
+		if (rdbWriteRaw(rdb, ta->buckets, sizeof(uint32_t)* TA_BUCKETS) == -1) return -1;
 
-		for (int i = 0; i < TA_BUCKETS; i++){
-			if (rdbWriteRaw(rdb, ptr, 4) == -1) return -1;
-			ptr += 4;
-		}
-
-		nwritten += l;
-	}
-	else {
+        nwritten += l;
+    }
+    else {
         redisPanic("Unknown object type");
     }
     return nwritten;
@@ -1057,10 +1048,10 @@ robj *rdbLoadObject(int rdbtype, rio *rdb) {
                 redisPanic("Unknown encoding");
                 break;
         }
-	}
-	else if (rdbtype == REDIS_RDB_TYPE_TAVG){
-		if ((o = rdbLoadTavgObject(rdb)) == NULL) return NULL;
-		o->type = REDIS_TAVG;
+    }
+    else if (rdbtype == REDIS_RDB_TYPE_TAVG){ 
+        if ((o = rdbLoadTavgObject(rdb)) == NULL) return NULL;
+        //o->type = REDIS_TAVG;
     } else {
         redisPanic("Unknown object type");
     }
