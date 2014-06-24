@@ -100,7 +100,7 @@ void tacalcCommand(redisClient *c){
 	unsigned long sum = 0;
 	if (updated_ago < 0){
 		for (unsigned int i = 0; i < TA_BUCKETS; i++){
-			sum += ta->buckets[k];
+			sum += ta->buckets[i];
 		}
 	}
 	else{
