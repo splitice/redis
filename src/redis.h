@@ -1511,4 +1511,4 @@ void redisLogHexDump(int level, char *descr, void *value, size_t len);
 
 #endif
 
-static int taEntry(unsigned char *p)
+static int taEntry(unsigned char *p);
