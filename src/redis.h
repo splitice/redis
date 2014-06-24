@@ -1510,5 +1510,3 @@ void redisLogHexDump(int level, char *descr, void *value, size_t len);
     printf("-- MARK %s:%d --\n", __FILE__, __LINE__)
 
 #endif
-
-static int taEntry(unsigned char *p);
