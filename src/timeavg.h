@@ -5,9 +5,9 @@
 
 #define TA_BUCKETS 20
 
-struct time_average {
+typedef struct {
 	uint32_t last_updated;
 	uint32_t buckets[TA_BUCKETS];
-};
+} time_average;
 
 #endif
