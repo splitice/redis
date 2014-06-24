@@ -76,12 +76,12 @@ void tahitCommand(redisClient *c) {
 		notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "tahit", c->argv[1], c->db->id);
 		server.dirty++;
 
-		unsigned long sum = 0;
+		long long sum = 0;
 		for (unsigned int i = 0; i < TA_BUCKETS; i++){
 			sum += ta->buckets[i];
 		}
 
-		addReplyBulk(c, sum);
+		addReplyBulkLongLong(c, sum);
 	}
 }
 
@@ -104,7 +104,7 @@ void tacalcCommand(redisClient *c){
 
 	int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
 	
-	unsigned long sum = 0;
+	long long sum = 0;
 	if (updated_ago < 0){
 		for (unsigned int i = 0; i < TA_BUCKETS; i++){
 			sum += ta->buckets[i];
