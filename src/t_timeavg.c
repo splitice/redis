@@ -106,14 +106,14 @@ void tacalcCommand(redisClient *c){
 	else{
 		unsigned int clear_buckets = updated_ago / bucket_interval;
 
-		if (clear_buckets >= TA_BUCKETS){
-			clear_buckets = TA_BUCKETS - 1;
-		}
-
-		unsigned int bucketN = (ts / bucket_interval) % TA_BUCKETS;
-		for (unsigned int i = clear_buckets; i < TA_BUCKETS; i++){
-			unsigned int k = (bucketN - i) % TA_BUCKETS;
-			sum += ta->buckets[k];
+		//If we need to clear all buckets, then the value will be 0
+		if (clear_buckets < TA_BUCKETS){
+		{
+			unsigned int bucketN = (ts / bucket_interval) % TA_BUCKETS;
+			for (unsigned int i = clear_buckets; i < TA_BUCKETS; i++){
+				unsigned int k = (bucketN - i) % TA_BUCKETS;
+				sum += ta->buckets[k];
+			}
 		}
 	}
 	
