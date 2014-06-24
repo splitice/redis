@@ -47,7 +47,8 @@ void tahitCommand(redisClient *c) {
 	ta->buckets[bucketN] += by;
 
 	//difference between the begining of the previously updated bucket and now.
-	unsigned int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
+	//int limits the max time a value can be stale
+	int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
 
 	if (updated_ago > bucket_interval){
 		unsigned int clear_buckets = updated_ago / bucket_interval;
@@ -94,7 +95,7 @@ void tacalcCommand(redisClient *c){
 
 	time_average* ta = (time_average*)o->ptr;
 
-	unsigned int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
+	int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
 	unsigned int clear_buckets = updated_ago / bucket_interval;
 	unsigned int bucketN = (ts / bucket_interval) % TA_BUCKETS;
 
