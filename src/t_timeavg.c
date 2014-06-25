@@ -211,7 +211,22 @@ void tuhitCommand(redisClient *c) {
 		}
 
 		if (hllAdd(nr, (unsigned char*)unique->ptr, sdslen(unique->ptr))){
-			HLL_INVALIDATE_CACHE((struct hllhdr *)nr->ptr);
+			int invalid = 0;
+			struct hllhdr *hdr = nr->ptr;
+			/* Recompute it and update the cached value. */
+			uint64_t card = hllCount(hdr, &invalid);
+			if (invalid) {
+				addReplySds(c, sdsnew(invalid_hll_err));
+				return;
+			}
+			hdr->card[0] = card & 0xff;
+			hdr->card[1] = (card >> 8) & 0xff;
+			hdr->card[2] = (card >> 16) & 0xff;
+			hdr->card[3] = (card >> 24) & 0xff;
+			hdr->card[4] = (card >> 32) & 0xff;
+			hdr->card[5] = (card >> 40) & 0xff;
+			hdr->card[6] = (card >> 48) & 0xff;
+			hdr->card[7] = (card >> 56) & 0xff;
 		}
 
 		ta->last_updated = (unsigned int)ts;
@@ -227,42 +242,17 @@ void tuhitCommand(redisClient *c) {
 			struct hllhdr *hdr = r->ptr;
 			uint64_t card;
 
-			if (HLL_VALID_CACHE(hdr)) {
-				/* Just return the cached value. */
-				card = (uint64_t)hdr->card[0];
-				card |= (uint64_t)hdr->card[1] << 8;
-				card |= (uint64_t)hdr->card[2] << 16;
-				card |= (uint64_t)hdr->card[3] << 24;
-				card |= (uint64_t)hdr->card[4] << 32;
-				card |= (uint64_t)hdr->card[5] << 40;
-				card |= (uint64_t)hdr->card[6] << 48;
-				card |= (uint64_t)hdr->card[7] << 56;
+			/* Just return the cached value. */
+			card = (uint64_t)hdr->card[0];
+			card |= (uint64_t)hdr->card[1] << 8;
+			card |= (uint64_t)hdr->card[2] << 16;
+			card |= (uint64_t)hdr->card[3] << 24;
+			card |= (uint64_t)hdr->card[4] << 32;
+			card |= (uint64_t)hdr->card[5] << 40;
+			card |= (uint64_t)hdr->card[6] << 48;
+			card |= (uint64_t)hdr->card[7] << 56;
 
-				sum += card;
-			}
-			else {
-				int invalid = 0;
-				/* Recompute it and update the cached value. */
-				card = hllCount(hdr, &invalid);
-				if (invalid) {
-					addReplySds(c, sdsnew(invalid_hll_err));
-					return;
-				}
-				hdr->card[0] = card & 0xff;
-				hdr->card[1] = (card >> 8) & 0xff;
-				hdr->card[2] = (card >> 16) & 0xff;
-				hdr->card[3] = (card >> 24) & 0xff;
-				hdr->card[4] = (card >> 32) & 0xff;
-				hdr->card[5] = (card >> 40) & 0xff;
-				hdr->card[6] = (card >> 48) & 0xff;
-				hdr->card[7] = (card >> 56) & 0xff;
-				/* This is not considered a read-only command even if the
-				* data structure is not modified, since the cached value
-				* may be modified and given that the HLL is a Redis string
-				* we need to propagate the change. */
-
-				sum += *(uint64_t*)hdr->card;
-			}
+			sum += card;
 		}
 
 		signalModifiedKey(c->db, c->argv[1]);
