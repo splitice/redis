@@ -157,7 +157,7 @@ void tacalcCommand(redisClient *c){
 
 
 void tuhitCommand(redisClient *c) {
-	long bucket_interval, by, ts;
+	long bucket_interval, ts;
 
 	//the bucket
 	if ((getLongFromObjectOrReply(c, c->argv[1], &bucket_interval, NULL) != REDIS_OK))
@@ -201,14 +201,10 @@ void tuhitCommand(redisClient *c) {
 			}
 		}
 
-		int retval = hllAdd(ta->buckets[bucketN], (unsigned char*)c->argv[i]->ptr,
-			sdslen(c->argv[i]->ptr));
+		hllAdd(ta->buckets[bucketN], (unsigned char*)c->argv[2]->ptr, sdslen(c->argv[2]->ptr));
 
 		ta->last_updated = (unsigned int)ts;
 
-		signalModifiedKey(c->db, c->argv[1]);
-		notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "tahit", c->argv[i], c->db->id);
-		server.dirty++;
 
 		long long sum = 0;
 		for (unsigned int i = 0; i < TU_BUCKETS; i++){
@@ -250,12 +246,14 @@ void tuhitCommand(redisClient *c) {
 				* data structure is not modified, since the cached value
 				* may be modified and given that the HLL is a Redis string
 				* we need to propagate the change. */
-				signalModifiedKey(c->db, c->argv[1]);
-				server.dirty++;
 
 				sum += *(uint64_t*)&hdr->card;
 			}
 		}
+
+		signalModifiedKey(c->db, c->argv[1]);
+		notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "tuhit", c->argv[i], c->db->id);
+		server.dirty++;
 
 		addReplyBulkLongLong(c, sum);
 	}
