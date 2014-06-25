@@ -280,6 +280,7 @@ void tucalcCommand(redisClient *c){
 	unique_time_average* ta = (unique_time_average*)o->ptr;
 
 	int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
+	unsigned int bucketN = (ts / bucket_interval) % TA_BUCKETS;
 	unsigned int clear_buckets = updated_ago / bucket_interval;
 
 	if (clear_buckets >= TU_BUCKETS){
@@ -293,7 +294,8 @@ void tucalcCommand(redisClient *c){
 
 	long long sum = 0;
 	for (clear_buckets; clear_buckets < TU_BUCKETS; clear_buckets++){
-		robj* r = ta->buckets[clear_buckets];
+		unsigned int k = (bucketN - clear_buckets) % TA_BUCKETS;
+		robj* r = ta->buckets[k];
 		if (r == NULL){
 			continue;
 		}
