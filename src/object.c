@@ -283,6 +283,10 @@ void freeTavgObject(robj *o) {
 	zfree(o->ptr);
 }
 
+void freeTuavgObject(robj *o) {
+	zfree(o->ptr);
+}
+
 void incrRefCount(robj *o) {
     o->refcount++;
 }
@@ -297,6 +301,7 @@ void decrRefCount(robj *o) {
         case REDIS_ZSET: freeZsetObject(o); break;
         case REDIS_HASH: freeHashObject(o); break;
 		case REDIS_TAVG: freeTavgObject(o); break;
+		case REDIS_TUAVG: freeTuavgObject(o); break;
         default: redisPanic("Unknown object type"); break;
         }
         zfree(o);
