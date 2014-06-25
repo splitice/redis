@@ -280,7 +280,7 @@ void tucalcCommand(redisClient *c){
 	unique_time_average* ta = (unique_time_average*)o->ptr;
 
 	int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
-	unsigned int bucketN = (ts / bucket_interval) % TA_BUCKETS;
+	unsigned int bucketN = (ts / bucket_interval) % TU_BUCKETS;
 	unsigned int clear_buckets = updated_ago / bucket_interval;
 
 	if (clear_buckets >= TU_BUCKETS){
