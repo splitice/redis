@@ -247,7 +247,7 @@ void tuhitCommand(redisClient *c) {
 				* may be modified and given that the HLL is a Redis string
 				* we need to propagate the change. */
 
-				sum += *(uint64_t*)&hdr->card;
+				sum += *(uint64_t*)hdr->card;
 			}
 		}
 
