@@ -202,11 +202,14 @@ void tuhitCommand(redisClient *c) {
 			}
 		}
 
-		if (ta->buckets[bucketN] == NULL){
-			ta->buckets[bucketN] = createHLLObject();
+		robj* nr = ta->buckets[bucketN];
+		if (nr == NULL){
+			ta->buckets[bucketN] = nr = createHLLObject();
 		}
 
-		hllAdd(ta->buckets[bucketN], (unsigned char*)c->argv[2]->ptr, sdslen(c->argv[2]->ptr));
+		if (hllAdd(ta->buckets[bucketN], (unsigned char*)c->argv[2]->ptr, sdslen(c->argv[2]->ptr))){
+			HLL_INVALIDATE_CACHE((struct hllhdr *)nr->ptr);
+		}
 
 		ta->last_updated = (unsigned int)ts;
 
