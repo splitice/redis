@@ -616,7 +616,7 @@ int rdbSaveObject(rio *rdb, robj *o) {
     }
 	else if (o->type == REDIS_TUAVG) {
 		/* Save a string value */
-		if ((n = rdbSaveRawString(rdb, NULL,0)) == -1) return -1;
+		if ((n = rdbSaveRawString(rdb, shared.space->ptr, 0)) == -1) return -1;
 		nwritten += n;
 	}
     else {
