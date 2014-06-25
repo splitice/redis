@@ -11,4 +11,8 @@ struct hllhdr {
 	uint8_t registers[]; /* Data bytes. */
 };
 
+robj *createHLLObject(void);
+int hllAdd(robj *o, unsigned char *ele, size_t elesize);
+uint64_t hllCount(struct hllhdr *hdr, int *invalid);
+
 #endif
