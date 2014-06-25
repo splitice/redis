@@ -264,7 +264,6 @@ void tuhitCommand(redisClient *c) {
 }
 
 void tucalcCommand(redisClient *c){
-	/*
 	long bucket_interval, ts;
 
 	if ((getLongFromObjectOrReply(c, c->argv[1], &bucket_interval, NULL) != REDIS_OK))
@@ -274,32 +273,46 @@ void tucalcCommand(redisClient *c){
 		return;
 
 	robj *o;
-	if ((o = lookupKeyReadOrReply(c, c->argv[3], shared.nokeyerr)) == NULL || checkType(c, o, REDIS_TAVG)){
+	if ((o = lookupKeyReadOrReply(c, c->argv[3], shared.nokeyerr)) == NULL || checkType(c, o, REDIS_TUAVG)){
 		return;
 	}
 
 	unique_time_average* ta = (unique_time_average*)o->ptr;
 
 	int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
+	unsigned int clear_buckets = updated_ago / bucket_interval;
+
+	if (clear_buckets >= TU_BUCKETS){
+		addReplyLongLong(c, 0);
+		return;
+	}
+
+	if (clear_buckets < 0){
+		clear_buckets = 0;
+	}
 
 	long long sum = 0;
-	if (updated_ago < 0){
-		for (unsigned int i = 0; i < TU_BUCKETS; i++){
-			sum += ta->buckets[i];
+	for (clear_buckets; clear_buckets < TU_BUCKETS; clear_buckets++){
+		robj* r = ta->buckets[clear_buckets];
+		if (r == NULL){
+			continue;
 		}
-	}
-	else{
-		unsigned int clear_buckets = updated_ago / bucket_interval;
 
-		//If we need to clear all buckets, then the value will be 0
-		if (clear_buckets < TU_BUCKETS){
-			unsigned int bucketN = (ts / bucket_interval) % TU_BUCKETS;
-			for (; clear_buckets < TU_BUCKETS; clear_buckets++){
-				unsigned int k = (bucketN - clear_buckets) % TU_BUCKETS;
-				sum += ta->buckets[k];
-			}
-		}
+		struct hllhdr *hdr = r->ptr;
+		uint64_t card;
+
+		/* Just return the cached value. */
+		card = (uint64_t)hdr->card[0];
+		card |= (uint64_t)hdr->card[1] << 8;
+		card |= (uint64_t)hdr->card[2] << 16;
+		card |= (uint64_t)hdr->card[3] << 24;
+		card |= (uint64_t)hdr->card[4] << 32;
+		card |= (uint64_t)hdr->card[5] << 40;
+		card |= (uint64_t)hdr->card[6] << 48;
+		card |= (uint64_t)hdr->card[7] << 56;
+
+		sum += card;
 	}
 
-	addReplyLongLong(c, sum);*/
+	addReplyLongLong(c, sum);
 }
