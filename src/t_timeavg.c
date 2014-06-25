@@ -165,6 +165,8 @@ void tuhitCommand(redisClient *c) {
 	if ((getLongFromObjectOrReply(c, c->argv[3], &ts, NULL) != REDIS_OK))
 		return;
 
+	robj* unique = c->argv[2];
+
 	addReplyMultiBulkLen(c, c->argc - 4);
 
 	unsigned int bucketN = (ts / bucket_interval) % TU_BUCKETS;
@@ -208,7 +210,7 @@ void tuhitCommand(redisClient *c) {
 			ta->buckets[bucketN] = nr;
 		}
 
-		if (hllAdd(nr, (unsigned char*)c->argv[2]->ptr, sdslen(c->argv[2]->ptr))){
+		if (hllAdd(nr, (unsigned char*)unique->ptr, sdslen(unique->ptr))){
 			HLL_INVALIDATE_CACHE((struct hllhdr *)nr->ptr);
 		}
 
@@ -222,7 +224,7 @@ void tuhitCommand(redisClient *c) {
 				continue;
 			}
 
-			struct hllhdr *hdr = o->ptr;
+			struct hllhdr *hdr = r->ptr;
 			uint64_t card;
 
 			if (HLL_VALID_CACHE(hdr)) {
