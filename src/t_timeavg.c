@@ -194,9 +194,11 @@ void tuhitCommand(redisClient *c) {
 			for (unsigned int i = 0; i < clear_buckets; i++){
 				unsigned int k = (bucketN - i) % TU_BUCKETS;
 				robj* r = ta->buckets[k];
-				sdsfree(r->ptr);
-				zfree(r);
-				ta->buckets[k] = NULL;
+				if (r != NULL){
+					sdsfree(r->ptr);
+					zfree(r);
+					ta->buckets[k] = NULL;
+				}
 			}
 		}
 
