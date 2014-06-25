@@ -204,10 +204,11 @@ void tuhitCommand(redisClient *c) {
 
 		robj* nr = ta->buckets[bucketN];
 		if (nr == NULL){
-			ta->buckets[bucketN] = nr = createHLLObject();
+			nr = createHLLObject();
+			ta->buckets[bucketN] = nr;
 		}
 
-		if (hllAdd(ta->buckets[bucketN], (unsigned char*)c->argv[2]->ptr, sdslen(c->argv[2]->ptr))){
+		if (hllAdd(nr, (unsigned char*)c->argv[2]->ptr, sdslen(c->argv[2]->ptr))){
 			HLL_INVALIDATE_CACHE((struct hllhdr *)nr->ptr);
 		}
 
