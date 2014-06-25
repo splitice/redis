@@ -1486,6 +1486,7 @@ void tahitCommand(redisClient *c);
 void tacalcCommand(redisClient *c);
 void tuhitCommand(redisClient *c);
 void tucalcCommand(redisClient *c);
+void tuupdateCommand(redisClient *c);
 
 #if defined(__GNUC__)
 void *calloc(size_t count, size_t size) __attribute__ ((deprecated));
