@@ -15,7 +15,7 @@ robj *createTuObject(void) {
 	unique_time_average* zl_uta = (unique_time_average*)zcalloc(sizeof(unique_time_average));
 	robj *o = createObject(REDIS_TUAVG, (unsigned char *)zl_uta);
 	for (int i = 0; i < TU_BUCKETS; i++){
-		zl_uta->buckets[i] = createHLLObject();
+		zl_uta->buckets[i] = NULL;
 	}
 	return o;
 }
@@ -196,8 +196,12 @@ void tuhitCommand(redisClient *c) {
 				robj* r = ta->buckets[k];
 				sdsfree(r->ptr);
 				zfree(r);
-				ta->buckets[k] = createHLLObject();
+				ta->buckets[k] = NULL;
 			}
+		}
+
+		if (ta->buckets[bucketN] == NULL){
+			ta->buckets[bucketN] = createHLLObject();
 		}
 
 		hllAdd(ta->buckets[bucketN], (unsigned char*)c->argv[2]->ptr, sdslen(c->argv[2]->ptr));
@@ -207,7 +211,11 @@ void tuhitCommand(redisClient *c) {
 
 		long long sum = 0;
 		for (unsigned int i = 0; i < TU_BUCKETS; i++){
-			robj* r = ta->buckets[i];
+			robj* r = ta->buckets[i]; 
+			if (r == NULL){
+				continue;
+			}
+
 			struct hllhdr *hdr = o->ptr;
 			uint64_t card;
 
