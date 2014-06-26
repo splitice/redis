@@ -282,7 +282,7 @@ struct redisCommand redisCommandTable[] = {
 	{ "tacalc", tacalcCommand, 4, "r", 0, NULL,4,4,1,0,0},
 	{"tuhit", tuhitCommand, -5, "wm", 0, NULL,4,-1,1,0,0},
 	{ "tucalc", tucalcCommand, 4, "r", 0, NULL,4,4,1,0,0},
-	{ "tuupdate", tuupdateCommand, 4, "r", 0, NULL,4,4,1,0,0},
+	{ "tuupdate", tuupdateCommand, -5, "wm", 0, NULL,4,4,1,0,0},
 };
 
 struct evictionPoolEntry *evictionPoolAlloc(void);

@@ -338,8 +338,7 @@ void tuupdateCommand(redisClient *c) {
 	for (int i = 4; i < c->argc; i++){
 		robj *o = tuTypeLookupWriteOrCreate(c, c->argv[i]);
 
-		if (o == NULL || o->type != REDIS_TUAVG) {
-			addReply(c, shared.nullbulk);
+		if (o == NULL || checkType(c,o,REDIS_TUAVG)) {
 			continue;
 		}
 
@@ -379,7 +378,7 @@ void tuupdateCommand(redisClient *c) {
 		size_t uniquelen = sdslen(unique->ptr);
 
 		int hasMore = 1, updated = 0;
-		while (hasMore){
+		do{
 			unsigned char* temp_uniqueptr = uniqueptr;
 			for (size_t f = 0; f < uniquelen; f++){
 				if (*temp_uniqueptr == 0){
@@ -395,7 +394,7 @@ void tuupdateCommand(redisClient *c) {
 			if (hllAdd(nr, uniqueptr, difference)){
 				updated = 1;
 			}
-		}
+		} while (hasMore);
 
 		if (updated){
 			int invalid = 0;
