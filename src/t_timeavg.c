@@ -331,8 +331,6 @@ void tuupdateCommand(redisClient *c) {
 
 	robj* unique = c->argv[2];
 
-	addReplyMultiBulkLen(c, c->argc - 4);
-
 	unsigned int bucketN = (ts / bucket_interval) % TU_BUCKETS;
 
 	for (int i = 4; i < c->argc; i++){
@@ -375,13 +373,13 @@ void tuupdateCommand(redisClient *c) {
 
 
 		unsigned char* uniqueptr = (unsigned char*)unique->ptr;
-		size_t uniquelen = sdslen(unique->ptr);
+		size_t uniquelen = sdslen(unique->ptr);	
 
 		int hasMore = 1, updated = 0;
 		do{
 			unsigned char* temp_uniqueptr = uniqueptr;
 			for (size_t f = 0; f < uniquelen; f++){
-				if (*temp_uniqueptr == 0){
+				if (*temp_uniqueptr == 0x00){
 					break;
 				}
 				temp_uniqueptr++;
