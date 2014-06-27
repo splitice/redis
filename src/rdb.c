@@ -85,23 +85,6 @@ robj *rdbLoadTavgObject(rio *rdb) {
     return createObject(REDIS_TAVG, zl);
 }
 
-robj *rdbLoadTuavgObject(rio *rdb) {
-	unique_time_average *zl = zmalloc(sizeof(unique_time_average));
-	if (rioRead(rdb, &zl->last_updated, sizeof(uint32_t)) == 0) return NULL;
-	uint8_t is_null;
-	for (int i = 0; i < TU_BUCKETS; i++){
-		if (rioRead(rdb, &is_null, sizeof(uint8_t)) == 0) return NULL;
-		if (is_null){
-			zl->buckets[i] = NULL;
-		}else{
-			robj* r = rdbGenericLoadStringObject(rdb, 0);
-			zl->buckets[i] = r;
-		}
-	}
-
-	return createObject(REDIS_TAVG, zl);
-}
-
 /* Saves an encoded length. The first two bits in the first byte are used to
  * hold the encoding type. See the REDIS_RDB_* definitions for more information
  * on the types of encoding. */
@@ -390,6 +373,24 @@ robj *rdbLoadStringObject(rio *rdb) {
 
 robj *rdbLoadEncodedStringObject(rio *rdb) {
     return rdbGenericLoadStringObject(rdb,1);
+}
+
+robj *rdbLoadTuavgObject(rio *rdb) {
+	unique_time_average *zl = zmalloc(sizeof(unique_time_average));
+	if (rioRead(rdb, &zl->last_updated, sizeof(uint32_t)) == 0) return NULL;
+	uint8_t is_null;
+	for (int i = 0; i < TU_BUCKETS; i++){
+		if (rioRead(rdb, &is_null, sizeof(uint8_t)) == 0) return NULL;
+		if (is_null){
+			zl->buckets[i] = NULL;
+		}
+		else{
+			robj* r = rdbGenericLoadStringObject(rdb, 0);
+			zl->buckets[i] = r;
+		}
+	}
+
+	return createObject(REDIS_TAVG, zl);
 }
 
 /* Save a double value. Doubles are saved as strings prefixed by an unsigned
