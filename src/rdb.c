@@ -390,7 +390,7 @@ robj *rdbLoadTuavgObject(rio *rdb) {
 		}
 	}
 
-	return createObject(REDIS_TAVG, zl);
+	return createObject(REDIS_TUAVG, zl);
 }
 
 /* Save a double value. Doubles are saved as strings prefixed by an unsigned
