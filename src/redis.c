@@ -279,10 +279,10 @@ struct redisCommand redisCommandTable[] = {
     {"pfmerge",pfmergeCommand,-2,"wm",0,NULL,1,-1,1,0,0},
     {"pfdebug",pfdebugCommand,-3,"w",0,NULL,0,0,0,0,0},
 	{"tahit", tahitCommand, -5, "wm", 0, NULL,4,-1,1,0,0},
-	{ "tacalc", tacalcCommand, 4, "r", 0, NULL,4,4,1,0,0},
+	{"tacalc", tacalcCommand, 4, "r", 0, NULL,4,4,1,0,0},
 	{"tuhit", tuhitCommand, -5, "wm", 0, NULL,4,-1,1,0,0},
-	{ "tucalc", tucalcCommand, 4, "r", 0, NULL,4,4,1,0,0},
-	{ "tuupdate", tuupdateCommand, -5, "wm", 0, NULL,4,4,1,0,0},
+	{"tucalc", tucalcCommand, 4, "r", 0, NULL,4,4,1,0,0},
+	{"tuupdate", tuupdateCommand, -5, "wm", 0, NULL,4,4,1,0,0},
 };
 
 struct evictionPoolEntry *evictionPoolAlloc(void);

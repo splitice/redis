@@ -370,7 +370,7 @@ void tucalcCommand(redisClient *c){
 
 	long long sum = 0;
 	for (; clear_buckets < TU_BUCKETS; clear_buckets++){
-		unsigned int k = (bucketN - clear_buckets) % TA_BUCKETS;
+		unsigned int k = (bucketN - clear_buckets) % TU_BUCKETS;
 		robj* r = ta->buckets[k];
 		if (r == NULL){
 			continue;
