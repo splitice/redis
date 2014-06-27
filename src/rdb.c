@@ -489,7 +489,7 @@ int rdbSaveObjectType(rio *rdb, robj *o) {
     case REDIS_TAVG:
         return rdbSaveType(rdb, REDIS_RDB_TYPE_TAVG);
 	case REDIS_TUAVG:
-		return rdbSaveType(rdb, REDIS_RDB_TYPE_TUAVG);//TODO: actually save
+		return rdbSaveType(rdb, REDIS_RDB_TYPE_TUAVG);
     default:
         redisPanic("Unknown object type");
     }
