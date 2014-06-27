@@ -86,7 +86,7 @@ robj *rdbLoadTavgObject(rio *rdb) {
 }
 
 robj *rdbLoadTuavgObject(rio *rdb) {
-	time_average *zl = zmalloc(sizeof(unique_time_average));
+	unique_time_average *zl = zmalloc(sizeof(unique_time_average));
 	if (rioRead(rdb, &zl->last_updated, sizeof(uint32_t)) == 0) return NULL;
 	uint8_t is_null;
 	for (int i = 0; i < TU_BUCKETS; i++){
