@@ -85,6 +85,23 @@ robj *rdbLoadTavgObject(rio *rdb) {
     return createObject(REDIS_TAVG, zl);
 }
 
+robj *rdbLoadTuavgObject(rio *rdb) {
+	time_average *zl = zmalloc(sizeof(unique_time_average));
+	if (rioRead(rdb, &zl->last_updated, sizeof(uint32_t)) == 0) return NULL;
+	uint8_t is_null;
+	for (int i = 0; i < TU_BUCKETS; i++){
+		if (rioRead(rdb, &is_null, sizeof(uint8_t)) == 0) return NULL;
+		if (is_null){
+			zl->buckets[i] = NULL;
+		}else{
+			robj* r = rdbGenericLoadStringObject(rdb, 0);
+			zl->buckets[i] = r;
+		}
+	}
+
+	return createObject(REDIS_TAVG, zl);
+}
+
 /* Saves an encoded length. The first two bits in the first byte are used to
  * hold the encoding type. See the REDIS_RDB_* definitions for more information
  * on the types of encoding. */
@@ -615,9 +632,22 @@ int rdbSaveObject(rio *rdb, robj *o) {
         nwritten += l;
     }
 	else if (o->type == REDIS_TUAVG) {
-		/* Save a string value */
-		if ((n = rdbSaveRawString(rdb, shared.space->ptr, 0)) == -1) return -1;
-		nwritten += n;
+		/* Save a time average value */
+		unique_time_average* ta = (unique_time_average*)o->ptr;
+
+		if (rdbWriteRaw(rdb, &ta->last_updated, sizeof(uint32_t)) == -1) return -1;
+
+		for (int i = 0; i < TU_BUCKETS; i++){
+			rio* r = ta->buckets[i];
+			
+			uint8_t is_null = (r == NULL);
+			if (rdbWriteRaw(rdb, &is_null, sizeof(uint8_t)) == 0) return NULL;
+			if (r != NULL){
+				nwritten += rdbSaveStringObject(rdb, r);
+			}
+		}
+
+		nwritten += sizeof(uint32_t)+(sizeof(uint8_t) * TU_BUCKETS);
 	}
     else {
         redisPanic("Unknown object type");
