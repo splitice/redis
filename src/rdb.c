@@ -641,7 +641,7 @@ int rdbSaveObject(rio *rdb, robj *o) {
 		for (int i = 0; i < TU_BUCKETS; i++){
 			robj* r = ta->buckets[i];
 			
-			uint8_t is_null = (r == NULL);
+			uint8_t is_null = (r == NULL)?0:1;
 			if (rdbWriteRaw(rdb, &is_null, sizeof(uint8_t)) == 0) return NULL;
 			if (r != NULL){
 				nwritten += rdbSaveStringObject(rdb, r);
