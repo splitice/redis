@@ -378,6 +378,7 @@ robj *rdbLoadEncodedStringObject(rio *rdb) {
 robj *rdbLoadTuavgObject(rio *rdb) {
 	unique_time_average *zl = zmalloc(sizeof(unique_time_average));
 	if (rioRead(rdb, &zl->last_updated, sizeof(uint32_t)) == 0) return NULL;
+	if (rioRead(rdb, &zl->created_time, sizeof(uint32_t)) == 0) return NULL;
 	uint8_t is_null;
 	for (int i = 0; i < TU_BUCKETS; i++){
 		if (rioRead(rdb, &is_null, sizeof(uint8_t)) == 0) return NULL;
@@ -637,6 +638,7 @@ int rdbSaveObject(rio *rdb, robj *o) {
 		unique_time_average* ta = (unique_time_average*)o->ptr;
 
 		if (rdbWriteRaw(rdb, &ta->last_updated, sizeof(uint32_t)) == -1) return -1;
+		if (rdbWriteRaw(rdb, &ta->created_time, sizeof(uint32_t)) == -1) return -1;
 
 		for (int i = 0; i < TU_BUCKETS; i++){
 			robj* r = ta->buckets[i];

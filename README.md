@@ -37,22 +37,32 @@ Returns OK if successful.
 Returns the sum of unqiue events over time value for a given key  based on the current [timestamp]. The [interval] 
 between buckets (how much time does a bucket represent) must be provided for this calculation.
 
-Data Structure:
+Also returns the time this structure was reated
+
+# Data Structure:
+
+The number of buckets is detimrined by a compile time constants.
+
+- TA_BUCKETS defaults to 20
+- TU_BUCKETS defaults to 6
+
+## Time Average
 	 ---------------------------------------------
 	 |               |         |         |
 	 |  Last Updated | Bucket0 | Bucket1 | ....
-	 |     32bit     |         |         |
+	 |     32bit     |  32bit  |  32bit  |
 	 |               |         |         |
 	 ---------------------------------------------
 
- - "TA" types utilize a 32bit unsigned integer bucket value
- - "TU" types utilize a redis hyperloglog object as a bucket value (pointer)
+## Time Unique Average
+	 ------------------------------------------------------------
+	 |               |              |         |         |
+	 |  Last Updated | Time Created | Bucket0 | Bucket1 | ....
+	 |     32bit     |     32bit    |   HLL   |   HLL   |
+	 |               |              |         |         |
+	 ------------------------------------------------------------
 
- The number of buckets is detimrined by a compile time constants.
-
- - TA_BUCKETS defaults to 20
- - TU_BUCKETS defaults to 7
 
  # Memory Requirements
  - Time average objects require 84 bytes of memory per object.
- - Time unique average objects require UP TO 421Kb of memory per object.
+ - Time unique average objects require UP TO 361Kb of memory per object.

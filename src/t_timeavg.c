@@ -38,25 +38,35 @@ Returns OK if successful.
 Returns the sum of unqiue events over time value for a given key  based on the current [timestamp]. The [interval] 
 between buckets (how much time does a bucket represent) must be provided for this calculation.
 
-Data Structure:
+Also returns the time this structure was reated
+
+# Data Structure:
+
+The number of buckets is detimrined by a compile time constants.
+
+- TA_BUCKETS defaults to 20
+- TU_BUCKETS defaults to 6
+
+## Time Average
 	 ---------------------------------------------
 	 |               |         |         |
 	 |  Last Updated | Bucket0 | Bucket1 | ....
-	 |     32bit     |         |         |
+	 |     32bit     |  32bit  |  32bit  |
 	 |               |         |         |
 	 ---------------------------------------------
 
- - "TA" types utilize a 32bit unsigned integer bucket value
- - "TU" types utilize a redis hyperloglog object as a bucket value (pointer)
+## Time Unique Average
+	 ------------------------------------------------------------
+	 |               |              |         |         |
+	 |  Last Updated | Time Created | Bucket0 | Bucket1 | ....
+	 |     32bit     |     32bit    |   HLL   |   HLL   |
+	 |               |              |         |         |
+	 ------------------------------------------------------------
 
- The number of buckets is detimrined by a compile time constants.
-
- - TA_BUCKETS defaults to 20
- - TU_BUCKETS defaults to 7
 
  # Memory Requirements
  - Time average objects require 84 bytes of memory per object.
- - Time unique average objects require UP TO 421Kb of memory per object.
+ - Time unique average objects require UP TO 361Kb of memory per object.
 */
 #include "redis.h"
 #include "hyperloglog.h"
@@ -71,8 +81,9 @@ robj *createTaObject(void) {
 	return o;
 }
 
-robj *createTuObject(void) {
+robj *createTuObject(uint32_t timestamp) {
 	unique_time_average* zl_uta = (unique_time_average*)zcalloc(sizeof(unique_time_average));
+	zl_uta->created_time = timestamp;
 	robj *o = createObject(REDIS_TUAVG, (unsigned char *)zl_uta);
 	for (int i = 0; i < TU_BUCKETS; i++){
 		zl_uta->buckets[i] = NULL;
@@ -95,10 +106,10 @@ robj *taTypeLookupWriteOrCreate(redisClient *c, robj *key) {
 	return o;
 }
 
-robj *tuTypeLookupWriteOrCreate(redisClient *c, robj *key) {
+robj *tuTypeLookupWriteOrCreate(redisClient *c, robj *key, uint32_t timestamp) {
 	robj *o = lookupKeyWrite(c->db, key);
 	if (o == NULL) {
-		o = createTuObject();
+		o = createTuObject(timestamp);
 		dbAdd(c->db, key, o);
 	}
 	else {
@@ -158,7 +169,7 @@ void tahitCommand(redisClient *c) {
 			ta->buckets[bucketN] = 1;
 		}
 
-		ta->last_updated = (unsigned int)ts;
+		ta->last_updated = (uint32_t)ts;
 
 		signalModifiedKey(c->db, c->argv[1]);
 		notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "tahit", c->argv[i], c->db->id);
@@ -225,6 +236,8 @@ void tuhitCommand(redisClient *c) {
 	if ((getLongFromObjectOrReply(c, c->argv[3], &ts, NULL) != REDIS_OK))
 		return;
 
+	uint32_t timestamp = (uint32_t)ts;
+
 	robj* unique = c->argv[2];
 
 	addReplyMultiBulkLen(c, c->argc - 4);
@@ -232,7 +245,7 @@ void tuhitCommand(redisClient *c) {
 	unsigned int bucketN = (ts / bucket_interval) % TU_BUCKETS;
 
 	for (int i = 4; i < c->argc; i++){
-		robj *o = tuTypeLookupWriteOrCreate(c, c->argv[i]);
+		robj *o = tuTypeLookupWriteOrCreate(c, c->argv[i], timestamp);
 
 		if (o == NULL || o->type != REDIS_TUAVG) {
 			addReply(c, shared.nullbulk);
@@ -289,7 +302,7 @@ void tuhitCommand(redisClient *c) {
 			hdr->card[7] = (card >> 56) & 0xff;
 		}
 
-		ta->last_updated = (unsigned int)ts;
+		ta->last_updated = timestamp;
 
 
 		long long sum = 0;
@@ -343,8 +356,11 @@ void tucalcCommand(redisClient *c){
 	unsigned int bucketN = (ts / bucket_interval) % TU_BUCKETS;
 	unsigned int clear_buckets = updated_ago / bucket_interval;
 
+	addReplyMultiBulkLen(c, 2);
+
 	if (clear_buckets >= TU_BUCKETS){
-		addReplyLongLong(c, 0);
+		addReplyBulkLongLong(c, 0);
+		addReplyBulkLongLong(c, ta->created_time);
 		return;
 	}
 
@@ -376,7 +392,8 @@ void tucalcCommand(redisClient *c){
 		sum += card;
 	}
 
-	addReplyLongLong(c, sum);
+	addReplyBulkLongLong(c, sum);
+	addReplyBulkLongLong(c, ta->created_time);
 }
 
 void tuupdateCommand(redisClient *c) {
@@ -389,12 +406,14 @@ void tuupdateCommand(redisClient *c) {
 	if ((getLongFromObjectOrReply(c, c->argv[3], &ts, NULL) != REDIS_OK))
 		return;
 
+	uint32_t timestamp = (uint32_t)ts;
+
 	robj* unique = c->argv[2];
 
 	unsigned int bucketN = (ts / bucket_interval) % TU_BUCKETS;
 
 	for (int i = 4; i < c->argc; i++){
-		robj *o = tuTypeLookupWriteOrCreate(c, c->argv[i]);
+		robj *o = tuTypeLookupWriteOrCreate(c, c->argv[i], timestamp);
 
 		if (o == NULL || checkType(c,o,REDIS_TUAVG)) {
 			continue;
@@ -473,7 +492,7 @@ void tuupdateCommand(redisClient *c) {
 			hdr->card[7] = (card >> 56) & 0xff;
 		}
 
-		ta->last_updated = (unsigned int)ts;
+		ta->last_updated = timestamp;
 
 		addReply(c, shared.ok);
 

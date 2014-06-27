@@ -16,6 +16,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t last_updated;
+	uint32_t created_time;
 	robj* buckets[TU_BUCKETS];
 } unique_time_average;
 
