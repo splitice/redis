@@ -639,7 +639,7 @@ int rdbSaveObject(rio *rdb, robj *o) {
 		if (rdbWriteRaw(rdb, &ta->last_updated, sizeof(uint32_t)) == -1) return -1;
 
 		for (int i = 0; i < TU_BUCKETS; i++){
-			rio* r = ta->buckets[i];
+			robj* r = ta->buckets[i];
 			
 			uint8_t is_null = (r == NULL);
 			if (rdbWriteRaw(rdb, &is_null, sizeof(uint8_t)) == 0) return NULL;
