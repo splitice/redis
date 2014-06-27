@@ -489,7 +489,7 @@ int rdbSaveObjectType(rio *rdb, robj *o) {
     case REDIS_TAVG:
         return rdbSaveType(rdb, REDIS_RDB_TYPE_TAVG);
 	case REDIS_TUAVG:
-		return rdbSaveType(rdb, REDIS_RDB_TYPE_STRING);//TODO: actually save
+		return rdbSaveType(rdb, REDIS_RDB_TYPE_TUAVG);//TODO: actually save
     default:
         redisPanic("Unknown object type");
     }
@@ -1090,7 +1090,12 @@ robj *rdbLoadObject(int rdbtype, rio *rdb) {
     else if (rdbtype == REDIS_RDB_TYPE_TAVG){ 
         if ((o = rdbLoadTavgObject(rdb)) == NULL) return NULL;
         //o->type = REDIS_TAVG;
-    } else {
+	}
+	else if (rdbtype == REDIS_RDB_TYPE_TUAVG){
+		if ((o = rdbLoadTuavgObject(rdb)) == NULL) return NULL;
+		//o->type = REDIS_TAVG;
+	}
+	else {
         redisPanic("Unknown object type");
     }
     return o;

@@ -75,6 +75,7 @@
 #define REDIS_RDB_TYPE_ZSET   3
 #define REDIS_RDB_TYPE_HASH   4
 #define REDIS_RDB_TYPE_TAVG   5
+#define REDIS_RDB_TYPE_TUAVG  6
 
 /* Object types for encoded objects. */
 #define REDIS_RDB_TYPE_HASH_ZIPMAP    9
