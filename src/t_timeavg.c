@@ -215,7 +215,7 @@ void tacalcCommand(redisClient *c){
 
 		//If we need to clear all buckets, then the value will be 0
 		if (clear_buckets < TA_BUCKETS){
-			unsigned int num_buckets = TU_BUCKETS - clear_buckets;
+			unsigned int num_buckets = TA_BUCKETS - clear_buckets;
 
 			for (unsigned int i = 0; i<num_buckets; i++){
 				unsigned int k = (bucketN + i) % TA_BUCKETS;
