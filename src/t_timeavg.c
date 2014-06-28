@@ -215,8 +215,10 @@ void tacalcCommand(redisClient *c){
 
 		//If we need to clear all buckets, then the value will be 0
 		if (clear_buckets < TA_BUCKETS){
-			for (; clear_buckets < TA_BUCKETS; clear_buckets++){
-				unsigned int k = (bucketN - clear_buckets) % TA_BUCKETS;
+			unsigned int num_buckets = TU_BUCKETS - clear_buckets;
+
+			for (unsigned int i = 0; i<num_buckets; i++){
+				unsigned int k = (bucketN + i) % TA_BUCKETS;
 				sum += ta->buckets[k];
 			}
 		}
@@ -368,16 +370,18 @@ void tucalcCommand(redisClient *c){
 		clear_buckets = 0;
 	}
 
+	unsigned int num_buckets = TU_BUCKETS - clear_buckets;
+
 	long long sum = 0;
-	for (; clear_buckets < TU_BUCKETS; clear_buckets++){
-		unsigned int k = (bucketN - clear_buckets) % TU_BUCKETS;
+	for (unsigned int i = 0; i<num_buckets; i++){
+		unsigned int k = (bucketN + i) % TU_BUCKETS;
 		robj* r = ta->buckets[k];
 		if (r == NULL){
 			continue;
 		}
 
 		struct hllhdr *hdr = r->ptr;
-		uint64_t card;
+		uint64_t card;	
 
 		/* Just return the cached value. */
 		card = (uint64_t)hdr->card[0];
