@@ -66,7 +66,7 @@ The number of buckets is detimrined by a compile time constants.
 
  # Memory Requirements
  - Time average objects require 84 bytes of memory per object.
- - Time unique average objects require UP TO 361Kb of memory per object.
+ - Time unique average objects require UP TO 73kb of memory per object.
 */
 #include "redis.h"
 #include "hyperloglog.h"
