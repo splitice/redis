@@ -158,7 +158,7 @@ void tahitCommand(redisClient *c) {
 			unsigned int clear_buckets = updated_ago / bucket_interval;
 
 			if (clear_buckets >= TA_BUCKETS){
-				clear_buckets = TA_BUCKETS - 1;
+				clear_buckets = TA_BUCKETS;
 			}
 
 			for (unsigned int i = 1; i < clear_buckets; i++){
@@ -263,7 +263,7 @@ void tuhitCommand(redisClient *c) {
 			unsigned int clear_buckets = updated_ago / bucket_interval;
 
 			if (clear_buckets >= TU_BUCKETS){
-				clear_buckets = TU_BUCKETS - 1;
+				clear_buckets = TU_BUCKETS;
 			}
 
 			for (unsigned int i = 0; i < clear_buckets; i++){
@@ -430,7 +430,7 @@ void tuupdateCommand(redisClient *c) {
 			unsigned int clear_buckets = updated_ago / bucket_interval;
 
 			if (clear_buckets >= TU_BUCKETS){
-				clear_buckets = TU_BUCKETS - 1;
+				clear_buckets = TU_BUCKETS;
 			}
 
 			for (unsigned int i = 0; i < clear_buckets; i++){
