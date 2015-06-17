@@ -107,7 +107,7 @@ start_server {
 			r tahit 1 1 [expr 130+$i] mytahit6
 		}
 		
-        assert_equal 60 [r tacalc 1 159 mytahit6]
+        assert_equal 60 [r tacalc 1 149 mytahit6]
 	}
 	
 	test {7. TAHIT - constant rate for 2 length with gap (not aligned, more than buckets)} {
