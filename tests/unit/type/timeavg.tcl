@@ -41,7 +41,7 @@ start_server {
 			incr f
 			assert_equal $f [r tahit 1 1 [expr 100+$i] mytahit3]
 		}
-		for {set i 0} {$i < 20} {incr i} {
+		for {set i 0} {$i < 10} {incr i} {
 			r tahit 1 1 [expr 120+$i] mytahit3
 			r tahit 1 1 [expr 120+$i] mytahit3
 			r tahit 1 1 [expr 120+$i] mytahit3
@@ -87,7 +87,7 @@ start_server {
 			r tahit 1 1 [expr 140+$i] mytahit5
 		}
 		
-        assert_equal 60 [r tacalc 1 169 mytahit5]
+        assert_equal 60 [r tacalc 1 159 mytahit5]
 	}
 	
 	test {TAHIT - constant rate for 2 length with gap (not aligned, less than buckets)} {
@@ -107,7 +107,7 @@ start_server {
 			r tahit 1 1 [expr 130+$i] mytahit6
 		}
 		
-        assert_equal 60 [r tacalc 1 139 mytahit6]
+        assert_equal 60 [r tacalc 1 159 mytahit6]
 	}
 	
 	test {TAHIT - constant rate for 2 length with gap (not aligned, more than buckets)} {
@@ -127,6 +127,6 @@ start_server {
 			r tahit 1 1 [expr 150+$i] mytahit7
 		}
 		
-        assert_equal 60 [r tacalc 1 139 mytahit7]
+        assert_equal 60 [r tacalc 1 179 mytahit7]
 	}
 }
