@@ -127,6 +127,6 @@ start_server {
 			r tahit 1 1 [expr 150+$i] mytahit7
 		}
 		
-        assert_equal 60 [r tacalc 1 179 mytahit7]
+        assert_equal 30 [r tacalc 1 179 mytahit7]
 	}
 }
