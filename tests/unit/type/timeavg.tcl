@@ -15,7 +15,7 @@ start_server {
 	test {TAHIT - varied rate for one length} {
         # 4,2,4,2.... expected average of 3/s (60)
 		for {set i 0} {$i < 20} {incr i} {
-			if {fmod($vbl,2) == 0} {
+			if {fmod($i,2) == 0} {
 				r tahit 1 1 [expr 100+$i] mytahit2
 				r tahit 1 1 [expr 100+$i] mytahit2
 				r tahit 1 1 [expr 100+$i] mytahit2
