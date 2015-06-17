@@ -121,109 +121,135 @@ robj *tuTypeLookupWriteOrCreate(redisClient *c, robj *key, uint32_t timestamp) {
 	return o;
 }
 
+//tahit [interval] [by] [timestamp] [key1] [key2...]
 void tahitCommand(redisClient *c) {
 	long bucket_interval, by, ts;
+	unsigned int bucketN, updated_ago, clear_buckets;
+	long long sum;
+	time_average* ta;
+	robj *o;
 
-	//the bucket
+	//the bucket interval (time per bucket)
 	if ((getLongFromObjectOrReply(c, c->argv[1], &bucket_interval, NULL) != REDIS_OK))
 		return; 
 
+	//the ammount to increment by
 	if ((getLongFromObjectOrReply(c, c->argv[2], &by, NULL) != REDIS_OK))
 		return;
 
+	//the current timestamp
 	if ((getLongFromObjectOrReply(c, c->argv[3], &ts, NULL) != REDIS_OK))
 		return;
 	
+	//all the remaining arguments are keys, there will be one reply per key
 	addReplyMultiBulkLen(c, c->argc - 4);
 
-	unsigned int bucketN = (ts / bucket_interval) % TA_BUCKETS;
+	//the current bucket
+	bucketN = (ts / bucket_interval) % TA_BUCKETS;
 
+	//starting at argument 4, iterate all arguments
 	for (int i = 4; i < c->argc; i++){
-		robj *o = taTypeLookupWriteOrCreate(c, c->argv[i]);
-
-
+		//make sure this is a timavg (TA) key, then cast
+		o = taTypeLookupWriteOrCreate(c, c->argv[i]);
 		if (o == NULL || o->type != REDIS_TAVG) {
 			addReply(c, shared.nullbulk);
 			continue;
 		}
-
-		time_average* ta = (time_average*)o->ptr;
-		ta->buckets[bucketN] += by;
+		ta = (time_average*)o->ptr;
 
 		//difference between the begining of the previously updated bucket and now.
 		//int limits the max time a value can be stale
-		int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
+		updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
 
-		if (updated_ago > bucket_interval){
-			unsigned int clear_buckets = updated_ago / bucket_interval;
-
+		//If updated more than one bucket interval ago, we need to clear a bucket
+		if (updated_ago >= bucket_interval){
+			//Calculate number of buckets to clear
+			clear_buckets = updated_ago / bucket_interval;
 			if (clear_buckets >= TA_BUCKETS){
 				clear_buckets = TA_BUCKETS;
 			}
 
+			//Clear some buckets
 			for (unsigned int i = 1; i < clear_buckets; i++){
-				unsigned int k = (bucketN - i) % TA_BUCKETS;
-				ta->buckets[k] = 0;
+				ta->buckets[(bucketN - i) % TA_BUCKETS] = 0;//todo: more efficiently
 			}
 
-			ta->buckets[bucketN] = 1;
+			//Set our new bucket
+			ta->buckets[bucketN] = by;
+		}
+		else{
+			//Increment our bucket
+			ta->buckets[bucketN] += by;
 		}
 
+		//Set the time last updated
 		ta->last_updated = (uint32_t)ts;
 
+		//Redis database "stuff"
 		signalModifiedKey(c->db, c->argv[1]);
 		notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "tahit", c->argv[i], c->db->id);
 		server.dirty++;
 
-		long long sum = 0;
+		//Calculate sum
+		sum = 0;
 		for (unsigned int i = 0; i < TA_BUCKETS; i++){
 			sum += ta->buckets[i];
 		}
 
+		//Send reply for key (the sum)
 		addReplyBulkLongLong(c, sum);
 	}
 }
 
+//tacalc [interval] [timestamp] [key]
 void tacalcCommand(redisClient *c){
-
 	long bucket_interval, ts;
+	unsigned int bucketN, updated_ago, num_buckets;
+	long long sum;
+	time_average* ta;
+	robj *o;
 
+
+	//the bucket interval (time per bucket)
 	if ((getLongFromObjectOrReply(c, c->argv[1], &bucket_interval, NULL) != REDIS_OK))
 		return;
 
+	//the current timestamp
 	if ((getLongFromObjectOrReply(c, c->argv[2], &ts, NULL) != REDIS_OK))
 		return;
 
-	robj *o;
+	//the key
 	if ((o = lookupKeyReadOrReply(c, c->argv[3], shared.nokeyerr)) == NULL || checkType(c, o, REDIS_TAVG)){
 		return;
 	}
+	ta = (time_average*)o->ptr;
 
-	time_average* ta = (time_average*)o->ptr;
+	//calculations
+	updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
+	bucketN = (ts / bucket_interval) % TA_BUCKETS;
+	sum = 0;
+	num_buckets = TA_BUCKETS;
 
-	int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
-	unsigned int bucketN = (ts / bucket_interval) % TA_BUCKETS;
-	
-	long long sum = 0;
-	if (updated_ago < 0){
-		for (unsigned int i = 0; i < TA_BUCKETS; i++){
-			sum += ta->buckets[i];
-		}
-	}
-	else{
-		unsigned int clear_buckets = updated_ago / bucket_interval;
+	//We only need to do reversed "clearing" if updated_ago is greater than one bucket
+	if (updated_ago >= bucket_interval){
+		num_buckets = updated_ago / bucket_interval;
 
 		//If we need to clear all buckets, then the value will be 0
-		if (clear_buckets < TA_BUCKETS){
-			unsigned int num_buckets = TA_BUCKETS - clear_buckets;
-
-			for (unsigned int i = 0; i<num_buckets; i++){
-				unsigned int k = (bucketN + i) % TA_BUCKETS;
-				sum += ta->buckets[k];
-			}
+		if (num_buckets < TA_BUCKETS){
+			//we are not clearing anything, just counting the valid ones
+			num_buckets = TA_BUCKETS - num_buckets;
+		}
+		else{
+			num_buckets = 0;
 		}
 	}
+
+	//Sum up from bucketN to num_buckets (wrapped)
+	for (unsigned int i = 0; i<num_buckets; i++){
+		sum += ta->buckets[(bucketN + i) % TA_BUCKETS];
+	}
 	
+	//reply with sum
 	addReplyLongLong(c, sum);
 }
 
