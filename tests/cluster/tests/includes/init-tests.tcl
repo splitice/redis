@@ -14,17 +14,31 @@ test "(init) Restart killed instances" {
 
 test "Cluster nodes are reachable" {
     foreach_redis_id id {
-        # Every node should just know itself.
-        assert {[R $id ping] eq {PONG}}
+        # Every node should be reachable.
+        wait_for_condition 1000 50 {
+            ([catch {R $id ping} ping_reply] == 0) &&
+            ($ping_reply eq {PONG})
+        } else {
+            catch {R $id ping} err
+            fail "Node #$id keeps replying '$err' to PING."
+        }
     }
 }
 
 test "Cluster nodes hard reset" {
     foreach_redis_id id {
+        if {$::valgrind} {
+            set node_timeout 10000
+        } else {
+            set node_timeout 3000
+        }
         catch {R $id flushall} ; # May fail for readonly slaves.
+        R $id MULTI
         R $id cluster reset hard
         R $id cluster set-config-epoch [expr {$id+1}]
-        R $id config set cluster-node-timeout 3000
+        R $id EXEC
+        R $id config set cluster-node-timeout $node_timeout
+        R $id config set cluster-slave-validity-factor 10
         R $id config rewrite
     }
 }

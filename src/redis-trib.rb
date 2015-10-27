@@ -50,14 +50,16 @@ end
 class ClusterNode
     def initialize(addr)
         s = addr.split(":")
-        if s.length != 2
-            puts "Invalid node name #{addr}"
-            exit 1
+        if s.length < 2
+           puts "Invalid IP or Port (given as #{addr}) - use IP:Port format"
+           exit 1
         end
+        port = s.pop # removes port from split array
+        ip = s.join(":") # if s.length > 1 here, it's IPv6, so restore address
         @r = nil
         @info = {}
-        @info[:host] = s[0]
-        @info[:port] = s[1]
+        @info[:host] = ip
+        @info[:port] = port
         @info[:slots] = {}
         @info[:migrating] = {}
         @info[:importing] = {}
@@ -70,7 +72,7 @@ class ClusterNode
         @friends
     end
 
-    def slots 
+    def slots
         @info[:slots]
     end
 
@@ -152,7 +154,7 @@ class ClusterNode
                     end
                 } if slots
                 @dirty = false
-                @r.cluster("info").split("\n").each{|e|    
+                @r.cluster("info").split("\n").each{|e|
                     k,v=e.split(":")
                     k = k.to_sym
                     v.chop!
@@ -211,7 +213,7 @@ class ClusterNode
         #
         # Note: this could be easily written without side effects,
         # we use 'slots' just to split the computation into steps.
-        
+
         # First step: we want an increasing array of integers
         # for instance: [1,2,3,4,5,8,9,20,21,22,23,24,25,30]
         slots = @info[:slots].keys.sort
@@ -271,7 +273,7 @@ class ClusterNode
     def info
         @info
     end
-    
+
     def is_dirty?
         @dirty
     end
@@ -538,7 +540,6 @@ class RedisTrib
         nodes_count = @nodes.length
         masters_count = @nodes.length / (@replicas+1)
         masters = []
-        slaves = []
 
         # The first step is to split instances by IP. This is useful as
         # we'll try to allocate master nodes in different physical machines
@@ -556,15 +557,30 @@ class RedisTrib
 
         # Select master instances
         puts "Using #{masters_count} masters:"
-        while masters.length < masters_count
-            ips.each{|ip,nodes_list|
-                next if nodes_list.length == 0
-                masters << nodes_list.shift
-                puts masters[-1]
-                nodes_count -= 1
-                break if masters.length == masters_count
-            }
+        interleaved = []
+        stop = false
+        while not stop do
+            # Take one node from each IP until we run out of nodes
+            # across every IP.
+            ips.each do |ip,nodes|
+                if nodes.empty?
+                    # if this IP has no remaining nodes, check for termination
+                    if interleaved.length == nodes_count
+                        # stop when 'interleaved' has accumulated all nodes
+                        stop = true
+                        next
+                    end
+                else
+                    # else, move one node from this IP to 'interleaved'
+                    interleaved.push nodes.shift
+                end
+            end
         end
+
+        masters = interleaved.slice!(0, masters_count)
+        nodes_count -= masters.length
+
+        masters.each{|m| puts m}
 
         # Alloc slots on masters
         slots_per_node = ClusterHashSlots.to_f / masters_count
@@ -592,8 +608,8 @@ class RedisTrib
         # all nodes will be used.
         assignment_verbose = false
 
-        [:requested,:unused].each{|assign|
-            masters.each{|m|
+        [:requested,:unused].each do |assign|
+            masters.each do |m|
                 assigned_replicas = 0
                 while assigned_replicas < @replicas
                     break if nodes_count == 0
@@ -607,21 +623,33 @@ class RedisTrib
                                  "role too (#{nodes_count} remaining)."
                         end
                     end
-                    ips.each{|ip,nodes_list|
-                        next if nodes_list.length == 0
-                        # Skip instances with the same IP as the master if we
-                        # have some more IPs available.
-                        next if ip == m.info[:host] && nodes_count > nodes_list.length
-                        slave = nodes_list.shift
-                        slave.set_as_replica(m.info[:name])
-                        nodes_count -= 1
-                        assigned_replicas += 1
-                        puts "Adding replica #{slave} to #{m}"
-                        break
-                    }
+
+                    # Return the first node not matching our current master
+                    node = interleaved.find{|n| n.info[:host] != m.info[:host]}
+
+                    # If we found a node, use it as a best-first match.
+                    # Otherwise, we didn't find a node on a different IP, so we
+                    # go ahead and use a same-IP replica.
+                    if node
+                        slave = node
+                        interleaved.delete node
+                    else
+                        slave = interleaved.shift
+                    end
+                    slave.set_as_replica(m.info[:name])
+                    nodes_count -= 1
+                    assigned_replicas += 1
+                    puts "Adding replica #{slave} to #{m}"
+
+                    # If we are in the "assign extra nodes" loop,
+                    # we want to assign one extra replica to each
+                    # master before repeating masters.
+                    # This break lets us assign extra replicas to masters
+                    # in a round-robin way.
+                    break if assign == :unused
                 end
-            }
-        }
+            end
+        end
     end
 
     def flush_nodes_config
@@ -686,8 +714,13 @@ class RedisTrib
                     f[:flags].index("fail")
             fnode = ClusterNode.new(f[:addr])
             fnode.connect()
-            fnode.load_info()
-            add_node(fnode)
+            next if !fnode.r
+            begin
+                fnode.load_info()
+                add_node(fnode)
+            rescue => e
+                xputs "[ERR] Unable to load info for node #{fnode}"
+            end
         }
         populate_nodes_replicas_info
     end
@@ -756,7 +789,7 @@ class RedisTrib
 
     # Move slots between source and target nodes using MIGRATE.
     #
-    # Options: 
+    # Options:
     # :verbose -- Print a dot for every moved key.
     # :fix     -- We are moving in the context of a fix. Use REPLACE.
     # :cold    -- Move keys without opening / reconfiguring the nodes.
@@ -821,50 +854,96 @@ class RedisTrib
             puts "*** Please fix your cluster problems before resharding"
             exit 1
         end
-        numslots = 0
-        while numslots <= 0 or numslots > ClusterHashSlots
-            print "How many slots do you want to move (from 1 to #{ClusterHashSlots})? "
-            numslots = STDIN.gets.to_i
+
+        # Get number of slots
+        if opt['slots']
+            numslots = opt['slots'].to_i
+        else
+            numslots = 0
+            while numslots <= 0 or numslots > ClusterHashSlots
+                print "How many slots do you want to move (from 1 to #{ClusterHashSlots})? "
+                numslots = STDIN.gets.to_i
+            end
         end
-        target = nil
-        while not target
-            print "What is the receiving node ID? "
-            target = get_node_by_name(STDIN.gets.chop)
+
+        # Get the target instance
+        if opt['to']
+            target = get_node_by_name(opt['to'])
             if !target || target.has_flag?("slave")
                 xputs "*** The specified node is not known or not a master, please retry."
-                target = nil
+                exit 1
+            end
+        else
+            target = nil
+            while not target
+                print "What is the receiving node ID? "
+                target = get_node_by_name(STDIN.gets.chop)
+                if !target || target.has_flag?("slave")
+                    xputs "*** The specified node is not known or not a master, please retry."
+                    target = nil
+                end
             end
         end
+
+        # Get the source instances
         sources = []
-        xputs "Please enter all the source node IDs."
-        xputs "  Type 'all' to use all the nodes as source nodes for the hash slots."
-        xputs "  Type 'done' once you entered all the source nodes IDs."
-        while true
-            print "Source node ##{sources.length+1}:"
-            line = STDIN.gets.chop
-            src = get_node_by_name(line)
-            if line == "done"
-                if sources.length == 0
-                    puts "No source nodes given, operation aborted"
-                    exit 1
-                else
+        if opt['from']
+            opt['from'].split(',').each{|node_id|
+                if node_id == "all"
+                    sources = "all"
                     break
                 end
-            elsif line == "all"
-                @nodes.each{|n|
-                    next if n.info[:name] == target.info[:name]
-                    next if n.has_flag?("slave")
-                    sources << n
-                }
-                break
-            elsif !src || src.has_flag?("slave")
-                xputs "*** The specified node is not known or is not a master, please retry."
-            elsif src.info[:name] == target.info[:name]
-                xputs "*** It is not possible to use the target node as source node."
-            else
+                src = get_node_by_name(node_id)
+                if !src || src.has_flag?("slave")
+                    xputs "*** The specified node is not known or is not a master, please retry."
+                    exit 1
+                end
                 sources << src
+            }
+        else
+            xputs "Please enter all the source node IDs."
+            xputs "  Type 'all' to use all the nodes as source nodes for the hash slots."
+            xputs "  Type 'done' once you entered all the source nodes IDs."
+            while true
+                print "Source node ##{sources.length+1}:"
+                line = STDIN.gets.chop
+                src = get_node_by_name(line)
+                if line == "done"
+                    break
+                elsif line == "all"
+                    sources = "all"
+                    break
+                elsif !src || src.has_flag?("slave")
+                    xputs "*** The specified node is not known or is not a master, please retry."
+                elsif src.info[:name] == target.info[:name]
+                    xputs "*** It is not possible to use the target node as source node."
+                else
+                    sources << src
+                end
             end
         end
+
+        if sources.length == 0
+            puts "*** No source nodes given, operation aborted"
+            exit 1
+        end
+
+        # Handle soures == all.
+        if sources == "all"
+            sources = []
+            @nodes.each{|n|
+                next if n.info[:name] == target.info[:name]
+                next if n.has_flag?("slave")
+                sources << n
+            }
+        end
+
+        # Check if the destination node is the same of any source nodes.
+        if sources.index(target)
+            xputs "*** Target node is also listed among the source nodes!"
+            exit 1
+        end
+
         puts "\nReady to move #{numslots} slots."
         puts "  Source nodes:"
         sources.each{|s| puts "    "+s.info_string}
@@ -873,9 +952,11 @@ class RedisTrib
         reshard_table = compute_reshard_table(sources,numslots)
         puts "  Resharding plan:"
         show_reshard_table(reshard_table)
-        print "Do you want to proceed with the proposed reshard plan (yes/no)? "
-        yesno = STDIN.gets.chop
-        exit(1) if (yesno != "yes")
+        if !opt['yes']
+            print "Do you want to proceed with the proposed reshard plan (yes/no)? "
+            yesno = STDIN.gets.chop
+            exit(1) if (yesno != "yes")
+        end
         reshard_table.each{|e|
             move_slot(e[:source],target,e[:slot],:verbose=>true)
         }
@@ -1084,7 +1165,7 @@ class RedisTrib
         # right node as needed.
         cursor = nil
         while cursor != 0
-            cursor,keys = source.scan(cursor,:count,1000)
+            cursor,keys = source.scan(cursor, :count => 1000)
             cursor = cursor.to_i
             keys.each{|k|
                 # Migrate keys using the MIGRATE command.
@@ -1151,7 +1232,7 @@ end
 
 #################################################################################
 # Libraries
-# 
+#
 # We try to don't depend on external libs since this is a critical part
 # of Redis Cluster.
 #################################################################################
@@ -1253,7 +1334,8 @@ COMMANDS={
 ALLOWED_OPTIONS={
     "create" => {"replicas" => true},
     "add-node" => {"slave" => false, "master-id" => true},
-    "import" => {"from" => :required}
+    "import" => {"from" => :required},
+    "reshard" => {"from" => true, "to" => true, "slots" => true, "yes" => false}
 }
 
 def show_help

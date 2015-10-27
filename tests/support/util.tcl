@@ -315,12 +315,14 @@ proc roundFloat f {
 
 proc find_available_port start {
     for {set j $start} {$j < $start+1024} {incr j} {
-        if {[catch {
-            set fd [socket 127.0.0.1 $j]
-        }]} {
+        if {[catch {set fd1 [socket 127.0.0.1 $j]}] &&
+            [catch {set fd2 [socket 127.0.0.1 [expr $j+10000]]}]} {
             return $j
         } else {
-            close $fd
+            catch {
+                close $fd1
+                close $fd2
+            }
         }
     }
     if {$j == $start+1024} {
@@ -351,9 +353,21 @@ proc colorstr {color str} {
             default {set colorcode {37}}
         }
         if {$colorcode ne {}} {
-            return "\033\[$b;${colorcode};40m$str\033\[0m"
+            return "\033\[$b;${colorcode};49m$str\033\[0m"
         }
     } else {
         return $str
     }
+}
+
+# Execute a background process writing random data for the specified number
+# of seconds to the specified Redis instance.
+proc start_write_load {host port seconds} {
+    set tclsh [info nameofexecutable]
+    exec $tclsh tests/helpers/gen_write_load.tcl $host $port $seconds &
+}
+
+# Stop a process generating write load executed with start_write_load.
+proc stop_write_load {handle} {
+    catch {exec /bin/kill -9 $handle}
 }

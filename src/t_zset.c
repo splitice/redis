@@ -205,8 +205,6 @@ int zslDelete(zskiplist *zsl, double score, robj *obj) {
         zslDeleteNode(zsl, x, update);
         zslFreeNode(x);
         return 1;
-    } else {
-        return 0; /* not found */
     }
     return 0; /* not found */
 }
@@ -1169,22 +1167,70 @@ void zsetConvert(robj *zobj, int encoding) {
 }
 
 /*-----------------------------------------------------------------------------
- * Sorted set commands 
+ * Sorted set commands
  *----------------------------------------------------------------------------*/
 
 /* This generic command implements both ZADD and ZINCRBY. */
-void zaddGenericCommand(redisClient *c, int incr) {
+#define ZADD_NONE 0
+#define ZADD_INCR (1<<0)    /* Increment the score instead of setting it. */
+#define ZADD_NX (1<<1)      /* Don't touch elements not already existing. */
+#define ZADD_XX (1<<2)      /* Only touch elements already exisitng. */
+#define ZADD_CH (1<<3)      /* Return num of elements added or updated. */
+void zaddGenericCommand(redisClient *c, int flags) {
     static char *nanerr = "resulting score is not a number (NaN)";
     robj *key = c->argv[1];
     robj *ele;
     robj *zobj;
     robj *curobj;
     double score = 0, *scores = NULL, curscore = 0.0;
-    int j, elements = (c->argc-2)/2;
-    int added = 0, updated = 0;
+    int j, elements;
+    int scoreidx = 0;
+    /* The following vars are used in order to track what the command actually
+     * did during the execution, to reply to the client and to trigger the
+     * notification of keyspace change. */
+    int added = 0;      /* Number of new elements added. */
+    int updated = 0;    /* Number of elements with updated score. */
+    int processed = 0;  /* Number of elements processed, may remain zero with
+                           options like XX. */
 
-    if (c->argc % 2) {
+    /* Parse options. At the end 'scoreidx' is set to the argument position
+     * of the score of the first score-element pair. */
+    scoreidx = 2;
+    while(scoreidx < c->argc) {
+        char *opt = c->argv[scoreidx]->ptr;
+        if (!strcasecmp(opt,"nx")) flags |= ZADD_NX;
+        else if (!strcasecmp(opt,"xx")) flags |= ZADD_XX;
+        else if (!strcasecmp(opt,"ch")) flags |= ZADD_CH;
+        else if (!strcasecmp(opt,"incr")) flags |= ZADD_INCR;
+        else break;
+        scoreidx++;
+    }
+
+    /* Turn options into simple to check vars. */
+    int incr = (flags & ZADD_INCR) != 0;
+    int nx = (flags & ZADD_NX) != 0;
+    int xx = (flags & ZADD_XX) != 0;
+    int ch = (flags & ZADD_CH) != 0;
+
+    /* After the options, we expect to have an even number of args, since
+     * we expect any number of score-element pairs. */
+    elements = c->argc-scoreidx;
+    if (elements % 2) {
         addReply(c,shared.syntaxerr);
+        return;
+    }
+    elements /= 2; /* Now this holds the number of score-element pairs. */
+
+    /* Check for incompatible options. */
+    if (nx && xx) {
+        addReplyError(c,
+            "XX and NX options at the same time are not compatible");
+        return;
+    }
+
+    if (incr && elements > 1) {
+        addReplyError(c,
+            "INCR option supports a single increment-element pair");
         return;
     }
 
@@ -1193,15 +1239,16 @@ void zaddGenericCommand(redisClient *c, int incr) {
      * either execute fully or nothing at all. */
     scores = zmalloc(sizeof(double)*elements);
     for (j = 0; j < elements; j++) {
-        if (getDoubleFromObjectOrReply(c,c->argv[2+j*2],&scores[j],NULL)
+        if (getDoubleFromObjectOrReply(c,c->argv[scoreidx+j*2],&scores[j],NULL)
             != REDIS_OK) goto cleanup;
     }
 
     /* Lookup the key and create the sorted set if does not exist. */
     zobj = lookupKeyWrite(c->db,key);
     if (zobj == NULL) {
+        if (xx) goto reply_to_client; /* No key + XX option: nothing to do. */
         if (server.zset_max_ziplist_entries == 0 ||
-            server.zset_max_ziplist_value < sdslen(c->argv[3]->ptr))
+            server.zset_max_ziplist_value < sdslen(c->argv[scoreidx+1]->ptr))
         {
             zobj = createZsetObject();
         } else {
@@ -1222,8 +1269,9 @@ void zaddGenericCommand(redisClient *c, int incr) {
             unsigned char *eptr;
 
             /* Prefer non-encoded element when dealing with ziplists. */
-            ele = c->argv[3+j*2];
+            ele = c->argv[scoreidx+1+j*2];
             if ((eptr = zzlFind(zobj->ptr,ele,&curscore)) != NULL) {
+                if (nx) continue;
                 if (incr) {
                     score += curscore;
                     if (isnan(score)) {
@@ -1239,7 +1287,8 @@ void zaddGenericCommand(redisClient *c, int incr) {
                     server.dirty++;
                     updated++;
                 }
-            } else {
+                processed++;
+            } else if (!xx) {
                 /* Optimize: check if the element is too large or the list
                  * becomes too long *before* executing zzlInsert. */
                 zobj->ptr = zzlInsert(zobj->ptr,ele,score);
@@ -1249,15 +1298,18 @@ void zaddGenericCommand(redisClient *c, int incr) {
                     zsetConvert(zobj,REDIS_ENCODING_SKIPLIST);
                 server.dirty++;
                 added++;
+                processed++;
             }
         } else if (zobj->encoding == REDIS_ENCODING_SKIPLIST) {
             zset *zs = zobj->ptr;
             zskiplistNode *znode;
             dictEntry *de;
 
-            ele = c->argv[3+j*2] = tryObjectEncoding(c->argv[3+j*2]);
+            ele = c->argv[scoreidx+1+j*2] =
+                tryObjectEncoding(c->argv[scoreidx+1+j*2]);
             de = dictFind(zs->dict,ele);
             if (de != NULL) {
+                if (nx) continue;
                 curobj = dictGetKey(de);
                 curscore = *(double*)dictGetVal(de);
 
@@ -1282,22 +1334,30 @@ void zaddGenericCommand(redisClient *c, int incr) {
                     server.dirty++;
                     updated++;
                 }
-            } else {
+                processed++;
+            } else if (!xx) {
                 znode = zslInsert(zs->zsl,score,ele);
                 incrRefCount(ele); /* Inserted in skiplist. */
                 redisAssertWithInfo(c,NULL,dictAdd(zs->dict,ele,&znode->score) == DICT_OK);
                 incrRefCount(ele); /* Added to dictionary. */
                 server.dirty++;
                 added++;
+                processed++;
             }
         } else {
             redisPanic("Unknown sorted set encoding");
         }
     }
-    if (incr) /* ZINCRBY */
-        addReplyDouble(c,score);
-    else /* ZADD */
-        addReplyLongLong(c,added);
+
+reply_to_client:
+    if (incr) { /* ZINCRBY or INCR option. */
+        if (processed)
+            addReplyDouble(c,score);
+        else
+            addReply(c,shared.nullbulk);
+    } else { /* ZADD. */
+        addReplyLongLong(c,ch ? added+updated : added);
+    }
 
 cleanup:
     zfree(scores);
@@ -1309,11 +1369,11 @@ cleanup:
 }
 
 void zaddCommand(redisClient *c) {
-    zaddGenericCommand(c,0);
+    zaddGenericCommand(c,ZADD_NONE);
 }
 
 void zincrbyCommand(redisClient *c) {
-    zaddGenericCommand(c,1);
+    zaddGenericCommand(c,ZADD_INCR);
 }
 
 void zremCommand(redisClient *c) {
@@ -1981,51 +2041,77 @@ void zunionInterGenericCommand(redisClient *c, robj *dstkey, int op) {
             zuiClearIterator(&src[0]);
         }
     } else if (op == REDIS_OP_UNION) {
+        dict *accumulator = dictCreate(&setDictType,NULL);
+        dictIterator *di;
+        dictEntry *de;
+        double score;
+
+        if (setnum) {
+            /* Our union is at least as large as the largest set.
+             * Resize the dictionary ASAP to avoid useless rehashing. */
+            dictExpand(accumulator,zuiLength(&src[setnum-1]));
+        }
+
+        /* Step 1: Create a dictionary of elements -> aggregated-scores
+         * by iterating one sorted set after the other. */
         for (i = 0; i < setnum; i++) {
-            if (zuiLength(&src[i]) == 0)
-                continue;
+            if (zuiLength(&src[i]) == 0) continue;
 
             zuiInitIterator(&src[i]);
             while (zuiNext(&src[i],&zval)) {
-                double score, value;
-
-                /* Skip an element that when already processed */
-                if (dictFind(dstzset->dict,zuiObjectFromValue(&zval)) != NULL)
-                    continue;
-
-                /* Initialize score */
+                /* Initialize value */
                 score = src[i].weight * zval.score;
                 if (isnan(score)) score = 0;
 
-                /* We need to check only next sets to see if this element
-                 * exists, since we process every element just one time so
-                 * it can't exist in a previous set (otherwise it would be
-                 * already processed). */
-                for (j = (i+1); j < setnum; j++) {
-                    /* It is not safe to access the zset we are
-                     * iterating, so explicitly check for equal object. */
-                    if(src[j].subject == src[i].subject) {
-                        value = zval.score*src[j].weight;
-                        zunionInterAggregate(&score,value,aggregate);
-                    } else if (zuiFind(&src[j],&zval,&value)) {
-                        value *= src[j].weight;
-                        zunionInterAggregate(&score,value,aggregate);
+                /* Search for this element in the accumulating dictionary. */
+                de = dictFind(accumulator,zuiObjectFromValue(&zval));
+                /* If we don't have it, we need to create a new entry. */
+                if (de == NULL) {
+                    tmp = zuiObjectFromValue(&zval);
+                    /* Remember the longest single element encountered,
+                     * to understand if it's possible to convert to ziplist
+                     * at the end. */
+                    if (sdsEncodedObject(tmp)) {
+                        if (sdslen(tmp->ptr) > maxelelen)
+                            maxelelen = sdslen(tmp->ptr);
                     }
-                }
-
-                tmp = zuiObjectFromValue(&zval);
-                znode = zslInsert(dstzset->zsl,score,tmp);
-                incrRefCount(zval.ele); /* added to skiplist */
-                dictAdd(dstzset->dict,tmp,&znode->score);
-                incrRefCount(zval.ele); /* added to dictionary */
-
-                if (sdsEncodedObject(tmp)) {
-                    if (sdslen(tmp->ptr) > maxelelen)
-                        maxelelen = sdslen(tmp->ptr);
+                    /* Add the element with its initial score. */
+                    de = dictAddRaw(accumulator,tmp);
+                    incrRefCount(tmp);
+                    dictSetDoubleVal(de,score);
+                } else {
+                    /* Update the score with the score of the new instance
+                     * of the element found in the current sorted set.
+                     *
+                     * Here we access directly the dictEntry double
+                     * value inside the union as it is a big speedup
+                     * compared to using the getDouble/setDouble API. */
+                    zunionInterAggregate(&de->v.d,score,aggregate);
                 }
             }
             zuiClearIterator(&src[i]);
         }
+
+        /* Step 2: convert the dictionary into the final sorted set. */
+        di = dictGetIterator(accumulator);
+
+        /* We now are aware of the final size of the resulting sorted set,
+         * let's resize the dictionary embedded inside the sorted set to the
+         * right size, in order to save rehashing time. */
+        dictExpand(dstzset->dict,dictSize(accumulator));
+
+        while((de = dictNext(di)) != NULL) {
+            robj *ele = dictGetKey(de);
+            score = dictGetDoubleVal(de);
+            znode = zslInsert(dstzset->zsl,score,ele);
+            incrRefCount(ele); /* added to skiplist */
+            dictAdd(dstzset->dict,ele,&znode->score);
+            incrRefCount(ele); /* added to dictionary */
+        }
+        dictReleaseIterator(di);
+
+        /* We can free the accumulator dictionary now. */
+        dictRelease(accumulator);
     } else {
         redisPanic("Unknown operator");
     }

@@ -43,6 +43,84 @@ start_server {tags {"zset"}} {
             assert_error "*not*float*" {r zadd myzset nan abc}
         }
 
+        test "ZADD with options syntax error with incomplete pair" {
+            r del ztmp
+            catch {r zadd ztmp xx 10 x 20} err
+            set err
+        } {ERR*}
+
+        test "ZADD XX option without key - $encoding" {
+            r del ztmp
+            assert {[r zadd ztmp xx 10 x] == 0}
+            assert {[r type ztmp] eq {none}}
+        }
+
+        test "ZADD XX existing key - $encoding" {
+            r del ztmp
+            r zadd ztmp 10 x
+            assert {[r zadd ztmp xx 20 y] == 0}
+            assert {[r zcard ztmp] == 1}
+        }
+
+        test "ZADD XX returns the number of elements actually added" {
+            r del ztmp
+            r zadd ztmp 10 x
+            set retval [r zadd ztmp 10 x 20 y 30 z]
+            assert {$retval == 2}
+        }
+
+        test "ZADD XX updates existing elements score" {
+            r del ztmp
+            r zadd ztmp 10 x 20 y 30 z
+            r zadd ztmp xx 5 foo 11 x 21 y 40 zap
+            assert {[r zcard ztmp] == 3}
+            assert {[r zscore ztmp x] == 11}
+            assert {[r zscore ztmp y] == 21}
+        }
+
+        test "ZADD XX and NX are not compatible" {
+            r del ztmp
+            catch {r zadd ztmp xx nx 10 x} err
+            set err
+        } {ERR*}
+
+        test "ZADD NX with non exisitng key" {
+            r del ztmp
+            r zadd ztmp nx 10 x 20 y 30 z
+            assert {[r zcard ztmp] == 3}
+        }
+
+        test "ZADD NX only add new elements without updating old ones" {
+            r del ztmp
+            r zadd ztmp 10 x 20 y 30 z
+            assert {[r zadd ztmp nx 11 x 21 y 100 a 200 b] == 2}
+            assert {[r zscore ztmp x] == 10}
+            assert {[r zscore ztmp y] == 20}
+            assert {[r zscore ztmp a] == 100}
+            assert {[r zscore ztmp b] == 200}
+        }
+
+        test "ZADD INCR works like ZINCRBY" {
+            r del ztmp
+            r zadd ztmp 10 x 20 y 30 z
+            r zadd ztmp INCR 15 x
+            assert {[r zscore ztmp x] == 25}
+        }
+
+        test "ZADD INCR works with a single score-elemenet pair" {
+            r del ztmp
+            r zadd ztmp 10 x 20 y 30 z
+            catch {r zadd ztmp INCR 15 x 10 y} err
+            set err
+        } {ERR*}
+
+        test "ZADD CH option changes return value to all changed elements" {
+            r del ztmp
+            r zadd ztmp 10 x 20 y 30 z
+            assert {[r zadd ztmp 11 x 21 y 30 z] == 0}
+            assert {[r zadd ztmp ch 12 x 22 y 30 z] == 2}
+        }
+
         test "ZINCRBY calls leading to NaN result in error" {
             r zincrby myzset +inf abc
             assert_error "*NaN*" {r zincrby myzset -inf abc}
@@ -77,6 +155,8 @@ start_server {tags {"zset"}} {
         }
 
         test "ZCARD basics - $encoding" {
+            r del ztmp
+            r zadd ztmp 10 a 20 b 30 c
             assert_equal 3 [r zcard ztmp]
             assert_equal 0 [r zcard zdoesntexist]
         }
@@ -587,6 +667,28 @@ start_server {tags {"zset"}} {
         r zinterstore to_here 3 one two three WEIGHTS 0 0 1
         r zrange to_here 0 -1
     } {100}
+
+    test {ZUNIONSTORE result is sorted} {
+        # Create two sets with common and not common elements, perform
+        # the UNION, check that elements are still sorted.
+        r del one two dest
+        set cmd1 [list r zadd one]
+        set cmd2 [list r zadd two]
+        for {set j 0} {$j < 1000} {incr j} {
+            lappend cmd1 [expr rand()] [randomInt 1000]
+            lappend cmd2 [expr rand()] [randomInt 1000]
+        }
+        {*}$cmd1
+        {*}$cmd2
+        assert {[r zcard one] > 100}
+        assert {[r zcard two] > 100}
+        r zunionstore dest 2 one two
+        set oldscore 0
+        foreach {ele score} [r zrange dest 0 -1 withscores] {
+            assert {$score >= $oldscore}
+            set oldscore $score
+        }
+    }
 
     proc stressers {encoding} {
         if {$encoding == "ziplist"} {

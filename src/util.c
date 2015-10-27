@@ -37,8 +37,11 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <float.h>
+#include <stdint.h>
+#include <errno.h>
 
 #include "util.h"
+#include "sha1.h"
 
 /* Glob-style pattern matching. */
 int stringmatchlen(const char *pattern, int patternLen,
@@ -168,11 +171,12 @@ int stringmatch(const char *pattern, const char *string, int nocase) {
 }
 
 /* Convert a string representing an amount of memory into the number of
- * bytes, so for instance memtoll("1Gi") will return 1073741824 that is
+ * bytes, so for instance memtoll("1Gb") will return 1073741824 that is
  * (1024*1024*1024).
  *
  * On parsing error, if *err is not NULL, it's set to 1, otherwise it's
- * set to 0 */
+ * set to 0. On error the function return value is 0, regardless of the
+ * fact 'err' is NULL or not. */
 long long memtoll(const char *p, int *err) {
     const char *u;
     char buf[128];
@@ -181,6 +185,7 @@ long long memtoll(const char *p, int *err) {
     unsigned int digits;
 
     if (err) *err = 0;
+
     /* Search the first non digit character. */
     u = p;
     if (*u == '-') u++;
@@ -201,41 +206,114 @@ long long memtoll(const char *p, int *err) {
         mul = 1024L*1024*1024;
     } else {
         if (err) *err = 1;
-        mul = 1;
+        return 0;
     }
+
+    /* Copy the digits into a buffer, we'll use strtoll() to convert
+     * the digit (without the unit) into a number. */
     digits = u-p;
     if (digits >= sizeof(buf)) {
         if (err) *err = 1;
-        return LLONG_MAX;
+        return 0;
     }
     memcpy(buf,p,digits);
     buf[digits] = '\0';
-    val = strtoll(buf,NULL,10);
+
+    char *endptr;
+    errno = 0;
+    val = strtoll(buf,&endptr,10);
+    if ((val == 0 && errno == EINVAL) || *endptr != '\0') {
+        if (err) *err = 1;
+        return 0;
+    }
     return val*mul;
 }
 
-/* Convert a long long into a string. Returns the number of
- * characters needed to represent the number, that can be shorter if passed
- * buffer length is not enough to store the whole number. */
-int ll2string(char *s, size_t len, long long value) {
-    char buf[32], *p;
-    unsigned long long v;
-    size_t l;
+/* Return the number of digits of 'v' when converted to string in radix 10.
+ * See ll2string() for more information. */
+uint32_t digits10(uint64_t v) {
+    if (v < 10) return 1;
+    if (v < 100) return 2;
+    if (v < 1000) return 3;
+    if (v < 1000000000000UL) {
+        if (v < 100000000UL) {
+            if (v < 1000000) {
+                if (v < 10000) return 4;
+                return 5 + (v >= 100000);
+            }
+            return 7 + (v >= 10000000UL);
+        }
+        if (v < 10000000000UL) {
+            return 9 + (v >= 1000000000UL);
+        }
+        return 11 + (v >= 100000000000UL);
+    }
+    return 12 + digits10(v / 1000000000000UL);
+}
 
-    if (len == 0) return 0;
-    v = (value < 0) ? -value : value;
-    p = buf+31; /* point to the last character */
-    do {
-        *p-- = '0'+(v%10);
-        v /= 10;
-    } while(v);
-    if (value < 0) *p-- = '-';
-    p++;
-    l = 32-(p-buf);
-    if (l+1 > len) l = len-1; /* Make sure it fits, including the nul term */
-    memcpy(s,p,l);
-    s[l] = '\0';
-    return l;
+/* Convert a long long into a string. Returns the number of
+ * characters needed to represent the number.
+ * If the buffer is not big enough to store the string, 0 is returned.
+ *
+ * Based on the following article (that apparently does not provide a
+ * novel approach but only publicizes an already used technique):
+ *
+ * https://www.facebook.com/notes/facebook-engineering/three-optimization-tips-for-c/10151361643253920
+ *
+ * Modified in order to handle signed integers since the original code was
+ * designed for unsigned integers. */
+int ll2string(char* dst, size_t dstlen, long long svalue) {
+    static const char digits[201] =
+        "0001020304050607080910111213141516171819"
+        "2021222324252627282930313233343536373839"
+        "4041424344454647484950515253545556575859"
+        "6061626364656667686970717273747576777879"
+        "8081828384858687888990919293949596979899";
+    int negative;
+    unsigned long long value;
+
+    /* The main loop works with 64bit unsigned integers for simplicity, so
+     * we convert the number here and remember if it is negative. */
+    if (svalue < 0) {
+        if (svalue != LLONG_MIN) {
+            value = -svalue;
+        } else {
+            value = ((unsigned long long) LLONG_MAX)+1;
+        }
+        negative = 1;
+    } else {
+        value = svalue;
+        negative = 0;
+    }
+
+    /* Check length. */
+    uint32_t const length = digits10(value)+negative;
+    if (length >= dstlen) return 0;
+
+    /* Null term. */
+    uint32_t next = length;
+    dst[next] = '\0';
+    next--;
+    while (value >= 100) {
+        int const i = (value % 100) * 2;
+        value /= 100;
+        dst[next] = digits[i + 1];
+        dst[next - 1] = digits[i];
+        next -= 2;
+    }
+
+    /* Handle last 1-2 digits. */
+    if (value < 10) {
+        dst[next] = '0' + (uint32_t) value;
+    } else {
+        int i = (uint32_t) value * 2;
+        dst[next] = digits[i + 1];
+        dst[next - 1] = digits[i];
+    }
+
+    /* Add sign. */
+    if (negative) dst[0] = '-';
+    return length;
 }
 
 /* Convert a string into a long long. Returns 1 if the string could be parsed
@@ -321,7 +399,7 @@ int string2l(const char *s, size_t slen, long *lval) {
 }
 
 /* Convert a double to a string representation. Returns the number of bytes
- * required. The representation should always be parsable by stdtod(3). */
+ * required. The representation should always be parsable by strtod(3). */
 int d2string(char *buf, size_t len, double value) {
     if (isnan(value)) {
         len = snprintf(buf,len,"nan");
@@ -364,11 +442,44 @@ int d2string(char *buf, size_t len, double value) {
  * having run_id == A, and you reconnect and it has run_id == B, you can be
  * sure that it is either a different instance or it was restarted. */
 void getRandomHexChars(char *p, unsigned int len) {
-    FILE *fp = fopen("/dev/urandom","r");
     char *charset = "0123456789abcdef";
     unsigned int j;
 
-    if (fp == NULL || fread(p,len,1,fp) == 0) {
+    /* Global state. */
+    static int seed_initialized = 0;
+    static unsigned char seed[20]; /* The SHA1 seed, from /dev/urandom. */
+    static uint64_t counter = 0; /* The counter we hash with the seed. */
+
+    if (!seed_initialized) {
+        /* Initialize a seed and use SHA1 in counter mode, where we hash
+         * the same seed with a progressive counter. For the goals of this
+         * function we just need non-colliding strings, there are no
+         * cryptographic security needs. */
+        FILE *fp = fopen("/dev/urandom","r");
+        if (fp && fread(seed,sizeof(seed),1,fp) == 1)
+            seed_initialized = 1;
+        if (fp) fclose(fp);
+    }
+
+    if (seed_initialized) {
+        while(len) {
+            unsigned char digest[20];
+            SHA1_CTX ctx;
+            unsigned int copylen = len > 20 ? 20 : len;
+
+            SHA1Init(&ctx);
+            SHA1Update(&ctx, seed, sizeof(seed));
+            SHA1Update(&ctx, (unsigned char*)&counter,sizeof(counter));
+            SHA1Final(digest, &ctx);
+            counter++;
+
+            memcpy(p,digest,copylen);
+            /* Convert to hex digits. */
+            for (j = 0; j < copylen; j++) p[j] = charset[p[j] & 0x0F];
+            len -= copylen;
+            p += copylen;
+        }
+    } else {
         /* If we can't read from /dev/urandom, do some reasonable effort
          * in order to create some entropy, since this function is used to
          * generate run_id and cluster instance IDs */
@@ -395,14 +506,12 @@ void getRandomHexChars(char *p, unsigned int len) {
             x += sizeof(pid);
         }
         /* Finally xor it with rand() output, that was already seeded with
-         * time() at startup. */
-        for (j = 0; j < len; j++)
+         * time() at startup, and convert to hex digits. */
+        for (j = 0; j < len; j++) {
             p[j] ^= rand();
+            p[j] = charset[p[j] & 0x0F];
+        }
     }
-    /* Turn it into hex digits taking just 4 bits out of 8 for every byte. */
-    for (j = 0; j < len; j++)
-        p[j] = charset[p[j] & 0x0F];
-    if (fp) fclose(fp);
 }
 
 /* Given the filename, return the absolute path as an SDS string, or NULL

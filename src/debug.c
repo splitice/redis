@@ -301,7 +301,7 @@ void debugCommand(redisClient *c) {
             "lru:%d lru_seconds_idle:%llu",
             (void*)val, val->refcount,
             strenc, (long long) rdbSavedObjectLen(val),
-            val->lru, estimateObjectIdleTime(val));
+            val->lru, estimateObjectIdleTime(val)/1000);
     } else if (!strcasecmp(c->argv[1]->ptr,"sdslen") && c->argc == 3) {
         dictEntry *de;
         robj *val;
@@ -325,7 +325,8 @@ void debugCommand(redisClient *c) {
                 (long long) sdslen(val->ptr),
                 (long long) sdsavail(val->ptr));
         }
-    } else if (!strcasecmp(c->argv[1]->ptr,"populate") && c->argc == 3) {
+    } else if (!strcasecmp(c->argv[1]->ptr,"populate") &&
+               (c->argc == 3 || c->argc == 4)) {
         long keys, j;
         robj *key, *val;
         char buf[128];
@@ -334,7 +335,8 @@ void debugCommand(redisClient *c) {
             return;
         dictExpand(c->db->dict,keys);
         for (j = 0; j < keys; j++) {
-            snprintf(buf,sizeof(buf),"key:%lu",j);
+            snprintf(buf,sizeof(buf),"%s:%lu",
+                (c->argc == 3) ? "key" : (char*)c->argv[3]->ptr, j);
             key = createStringObject(buf,strlen(buf));
             if (lookupKeyRead(c->db,key) != NULL) {
                 decrRefCount(key);
@@ -370,24 +372,6 @@ void debugCommand(redisClient *c) {
     {
         server.active_expire_enabled = atoi(c->argv[2]->ptr);
         addReply(c,shared.ok);
-    } else if (!strcasecmp(c->argv[1]->ptr,"cmdkeys") && c->argc >= 3) {
-        struct redisCommand *cmd = lookupCommand(c->argv[2]->ptr);
-        int *keys, numkeys, j;
-
-        if (!cmd) {
-            addReplyError(c,"Invalid command specified");
-            return;
-        } else if ((cmd->arity > 0 && cmd->arity != c->argc-2) ||
-                   ((c->argc-2) < -cmd->arity))
-        {
-            addReplyError(c,"Invalid number of arguments specified for command");
-            return;
-        }
-
-        keys = getKeysFromCommand(cmd,c->argv+2,c->argc-2,&numkeys);
-        addReplyMultiBulkLen(c,numkeys);
-        for (j = 0; j < numkeys; j++) addReplyBulk(c,c->argv[keys[j]+2]);
-        getKeysFreeResult(keys);
     } else if (!strcasecmp(c->argv[1]->ptr,"error") && c->argc == 3) {
         sds errstr = sdsnewlen("-",1);
 
@@ -868,7 +852,7 @@ void sigsegvHandler(int sig, siginfo_t *info, void *secret) {
 
     redisLog(REDIS_WARNING,
 "\n=== REDIS BUG REPORT END. Make sure to include from START to END. ===\n\n"
-"       Please report the crash opening an issue on github:\n\n"
+"       Please report the crash by opening an issue on github:\n\n"
 "           http://github.com/antirez/redis/issues\n\n"
 "  Suspect RAM error? Use redis-server --test-memory to verify it.\n\n"
 );
