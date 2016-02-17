@@ -392,7 +392,7 @@ void tucalcCommand(redisClient *c){
 		return;
 	}
 
-	if (clear_buckets < 0){
+	if (updated_ago < 0){
 		clear_buckets = 0;
 	}
 
