@@ -123,8 +123,8 @@ robj *tuTypeLookupWriteOrCreate(redisClient *c, robj *key, uint32_t timestamp) {
 
 //tahit [interval] [by] [timestamp] [key1] [key2...]
 void tahitCommand(redisClient *c) {
-	long bucket_interval, by, ts;
-	unsigned int bucketN, updated_ago, clear_buckets;
+	long bucket_interval, by, ts, updated_ago;
+	unsigned int bucketN, clear_buckets;
 	long long sum;
 	time_average* ta;
 	robj *o;
@@ -203,8 +203,8 @@ void tahitCommand(redisClient *c) {
 
 //tacalc [interval] [timestamp] [key]
 void tacalcCommand(redisClient *c){
-	long bucket_interval, ts;
-	unsigned int bucketN, updated_ago, num_buckets;
+	long bucket_interval, ts, updated_ago;
+	unsigned int bucketN, num_buckets;
 	long long sum;
 	time_average* ta;
 	robj *o;
