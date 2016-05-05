@@ -105,6 +105,7 @@ redisClient *createClient(int fd) {
     c->repl_ack_off = 0;
     c->repl_ack_time = 0;
     c->slave_listening_port = 0;
+    c->slave_capa = SLAVE_CAPA_NONE;
     c->reply = listCreate();
     c->reply_bytes = 0;
     c->obuf_soft_limit_reached_time = 0;
@@ -664,20 +665,6 @@ void disconnectSlaves(void) {
         listNode *ln = listFirst(server.slaves);
         freeClient((redisClient*)ln->value);
     }
-}
-
-/* This function is called when the slave lose the connection with the
- * master into an unexpected way. */
-void replicationHandleMasterDisconnection(void) {
-    server.master = NULL;
-    server.repl_state = REDIS_REPL_CONNECT;
-    server.repl_down_since = server.unixtime;
-    /* We lost connection with our master, force our slaves to resync
-     * with us as well to load the new data set.
-     *
-     * If server.masterhost is NULL the user called SLAVEOF NO ONE so
-     * slave resync is not needed. */
-    if (server.masterhost != NULL) disconnectSlaves();
 }
 
 void freeClient(redisClient *c) {
@@ -1540,16 +1527,39 @@ void rewriteClientCommandVector(redisClient *c, int argc, ...) {
     va_end(ap);
 }
 
+/* Completely replace the client command vector with the provided one. */
+void replaceClientCommandVector(redisClient *c, int argc, robj **argv) {
+    freeClientArgv(c);
+    zfree(c->argv);
+    c->argv = argv;
+    c->argc = argc;
+    c->cmd = lookupCommandOrOriginal(c->argv[0]->ptr);
+    redisAssertWithInfo(c,NULL,c->cmd != NULL);
+}
+
 /* Rewrite a single item in the command vector.
- * The new val ref count is incremented, and the old decremented. */
+ * The new val ref count is incremented, and the old decremented.
+ *
+ * It is possible to specify an argument over the current size of the
+ * argument vector: in this case the array of objects gets reallocated
+ * and c->argc set to the max value. However it's up to the caller to
+ *
+ * 1. Make sure there are no "holes" and all the arguments are set.
+ * 2. If the original argument vector was longer than the one we
+ *    want to end with, it's up to the caller to set c->argc and
+ *    free the no longer used objects on c->argv. */
 void rewriteClientCommandArgument(redisClient *c, int i, robj *newval) {
     robj *oldval;
 
-    redisAssertWithInfo(c,NULL,i < c->argc);
+    if (i >= c->argc) {
+        c->argv = zrealloc(c->argv,sizeof(robj*)*(i+1));
+        c->argc = i+1;
+        c->argv[i] = NULL;
+    }
     oldval = c->argv[i];
     c->argv[i] = newval;
     incrRefCount(newval);
-    decrRefCount(oldval);
+    if (oldval) decrRefCount(oldval);
 
     /* If this is the command name make sure to fix c->cmd. */
     if (i == 0) {
@@ -1679,6 +1689,12 @@ void flushSlavesOutputBuffers(void) {
         redisClient *slave = listNodeValue(ln);
         int events;
 
+        /* Note that the following will not flush output buffers of slaves
+         * in STATE_ONLINE but having put_online_on_ack set to true: in this
+         * case the writable event is never installed, since the purpose
+         * of put_online_on_ack is to postpone the moment it is installed.
+         * This is what we want since slaves in this state should not receive
+         * writes before the first ACK. */
         events = aeGetFileEvents(server.el,slave->fd);
         if (events & AE_WRITABLE &&
             slave->replstate == REDIS_REPL_ONLINE &&

@@ -293,13 +293,17 @@ void delCommand(redisClient *c) {
     addReplyLongLong(c,deleted);
 }
 
+/* EXISTS key1 key2 ... key_N.
+ * Return value is the number of keys existing. */
 void existsCommand(redisClient *c) {
-    expireIfNeeded(c->db,c->argv[1]);
-    if (dbExists(c->db,c->argv[1])) {
-        addReply(c, shared.cone);
-    } else {
-        addReply(c, shared.czero);
+    long long count = 0;
+    int j;
+
+    for (j = 1; j < c->argc; j++) {
+        expireIfNeeded(c->db,c->argv[j]);
+        if (dbExists(c->db,c->argv[j])) count++;
     }
+    addReplyLongLong(c,count);
 }
 
 void selectCommand(redisClient *c) {
@@ -710,7 +714,7 @@ void moveCommand(redisClient *c) {
     robj *o;
     redisDb *src, *dst;
     int srcid;
-    long long dbid;
+    long long dbid, expire;
 
     if (server.cluster_enabled) {
         addReplyError(c,"MOVE is not allowed in cluster mode");
@@ -744,6 +748,7 @@ void moveCommand(redisClient *c) {
         addReply(c,shared.czero);
         return;
     }
+    expire = getExpire(c->db,c->argv[1]);
 
     /* Return zero if the key already exists in the target DB */
     if (lookupKeyWrite(dst,c->argv[1]) != NULL) {
@@ -751,6 +756,7 @@ void moveCommand(redisClient *c) {
         return;
     }
     dbAdd(dst,c->argv[1],o);
+    if (expire != -1) setExpire(dst,c->argv[1],expire);
     incrRefCount(o);
 
     /* OK! key moved, free the entry in the source DB */
@@ -1122,6 +1128,33 @@ int *sortGetKeys(struct redisCommand *cmd, robj **argv, int argc, int *numkeys) 
         }
     }
     *numkeys = num + found_store;
+    return keys;
+}
+
+int *migrateGetKeys(struct redisCommand *cmd, robj **argv, int argc, int *numkeys) {
+    int i, num, first, *keys;
+    REDIS_NOTUSED(cmd);
+
+    /* Assume the obvious form. */
+    first = 3;
+    num = 1;
+
+    /* But check for the extended one with the KEYS option. */
+    if (argc > 6) {
+        for (i = 6; i < argc; i++) {
+            if (!strcasecmp(argv[i]->ptr,"keys") &&
+                sdslen(argv[3]->ptr) == 0)
+            {
+                first = i+1;
+                num = argc-first;
+                break;
+            }
+        }
+    }
+
+    keys = zmalloc(sizeof(int)*num);
+    for (i = 0; i < num; i++) keys[i] = first+i;
+    *numkeys = num;
     return keys;
 }
 

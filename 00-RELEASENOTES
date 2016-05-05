@@ -10,6 +10,165 @@ HIGH:     There is a critical bug that may affect a subset of users. Upgrade!
 CRITICAL: There is a critical bug affecting MOST USERS. Upgrade ASAP.
 --------------------------------------------------------------------------------
 
+--[ Redis 3.0.7 ] Release date: 28 jan 2016
+
+Upgrade urgency MODERATE: this release fixes important Redis Cluster bugs.
+
+* [FIX] avg_ttl reporting in INFO improved. (Salvatore Sanfilippo)
+* [FIX] Redis Cluster address update (via gossip section) processing improved
+        to avoid initiating inwanted handshakes.
+* [FIX] Many fixes to MIGRATE multiple keys implementation. The command
+        could handle errors in a faulty way leading to crashes or other
+        unexpected behaviors. MIGRATE command refactoring.
+        (The analysis of the faulty conditions was conducted by
+         Kevin McGehee. The fix was developed by Salvatore Sanfilippo)
+* [FIX] A Redis Cluster node crash was fixed because of wrong handling of
+        node->slaveof pointers.
+        (Reported by JackyWoo, fixed by Salvatore Sanfilippo)
+* [FIX] Fix redis-trib rebalance when nodes need to be left empty because
+        the specified weight is zero.
+        (Reported by Shahar Mor, fixed by Salvatore Sanfilippo)
+* [FIX] MIGRATE: Never send -ASK redirections for MIGRATE when there are
+        open slots. Redis-trib and other cluster management utility must
+        always be free to move keys between nodes about open slots, in order
+        to reshard, fix the cluster configuration, and so forth.
+        (Salvatore Sanfilippo)
+* [FIX] Redis-trib is now able to fix more errors. A new CLUSTER subcommand
+        called BUMPEPOCH was introduced in order to support new modes
+        for the "fix" subcommand. (Salvatore Sanfilippo)
+* [NEW] Cluster/Sentinel tests now use OSX leak to perform leak detection
+        at the end of every unit. (Salvatore Sanfilippo)
+* [NEW] Detect and show server crashes during Cluster/Sentinel tests.
+        (Salvatore Sanfilippo)
+* [NEW] More reliable Cluster/Sentinel test becuase of timing errors and
+        -LOADING errors. (Salvatore Sanfilippo)
+
+--[ Redis 3.0.6 ] Release date: 18 Dec 2015
+
+Upgrade urgency: MODERATE. We fixed a crash that happens very rarely, so
+                 updating does not hurt, but most users are unlikely to
+                 experience this condition because it requires some odd
+                 timing. However if you are a Redis Cluster user, upgrading
+                 is strongly adviced since this release includes very
+                 important improvements to Redis Cluster.
+
+* [FIX] lua_struct.c/getnum security issue fixed. (Luca Bruno discovered it,
+        patched by Sun He and Chris Lamb)
+* [FIX] Redis Cluster replica migration fixed. See issue #2924 for details.
+        (Salvatore Sanfilippo)
+* [FIX] Fix a race condition in processCommand() because of interactions
+        with freeMemoryIfNeeded(). Details in issue #2948 and especially
+        in the commit message d999f5a. (Race found analytically by
+        Oran Agra, patch by Salvatore Sanfilippo)
+
+* [NEW] Backported from the upcoming Redis 3.2:
+        MIGRATE now supports an extended multiple-keys pipelined mode, which
+        is an order of magnitude faster. Redis Cluster now uses this mode
+        in order to perform reshardings and rebalancings. (Salvatore Sanfilippo)
+* [NEW] Backported from the upcoming Redis 3.2:
+        Redis Cluster has now support for rebalancing via the redis-trib
+        rebalance command. Demo here:
+        https://asciinema.org/a/0tw2e5740kouda0yhkqrm5790
+        Official documentation will be available ASAP. (Salvatore Sanfilippo)
+* [NEW] Redis Cluster redis-trib.rb new "info" subcommand.
+* [NEW] Redis Cluster tests improved. (Salvatore Sanfilippo)
+* [NEW] Log offending memory access address on SIGSEGV/SIGBUS (Salvatore
+        Sanfilippo)
+
+--[ Redis 3.0.5 ] Release date: 15 Oct 2015
+
+Upgrade urgency: MODERATE, the most important thing is a fix in the replication
+                 code that may make the slave hanging forever if the master
+                 remains with an open socket even if it is no longer able to
+                 reply.
+
+* [FIX] MOVE now moves the TTL as well. A bug lasting forever... finally
+        fixed thanks to Andy Grunwald that reported it.
+        (reported by Andy Grunwald, fixed by Salvatore Sanfilippo)
+* [FIX] Fix a false positive in HSTRLEN test.
+* [FIX] Fix a bug in redis-cli --pipe mode that was not able to read back
+        replies from the server incrementally. Now a mass import will use
+        a lot less memory, and you can use --pipe to do incremental streaming.
+        (reported by Twitter user @fsaintjacques, fixed by Salvatore
+        Sanfilippo)
+* [FIX] Slave detection of master timeout. (fixed by Kevin McGehee, refactoring
+        and regression test by Salvatore Sanfilippo)
+
+* [NEW] Cluster: redis-trib fix can fix an additional case for opens lots.
+        (Salvatore Sanfilippo)
+* [NEW] Cluster: redis-trib import support for --copy and --replace options
+        (David Thomson)
+
+--[ Redis 3.0.4 ] Release date: 8 Sep 2015
+
+Upgrade urgency: HIGH for Redis and Sentinel. However note that in order to
+                 fix certain replication bugs, the replication internals were
+                 modified in a very heavy way. So while this release is
+                 conceptually saner, it may contain regressions. For this
+                 reason, before the release, QA activities were performed by
+                 me (antirez) and Redis Labs and no evident bug was found.
+
+* [FIX] A number of bugs related to replication PSYNC and the (yet experimental)
+        diskless replication feature were fixed. The bugs could lead to
+        inconsistency between masters and slaves. (Salvatore Sanfilippo, Oran
+        Agra fixed the issue found by Yuval Inbar)
+* [FIX] A replication bug in the context of PSYNC partial resynchonization was
+        found and fixed. This bug happens even when diskless replication is off
+        in the case different slaves connect at different times while the master
+        is creating an RDB file, and later a partial resynchronization is
+        attempted by a slave that connected not as the first one. (Salvatore
+        Sanfilippo, Oran Agra)
+* [FIX] Chained replication and PSYNC interactions leading to potential stale
+        chained slaves data set, see issue #2694. (Salvatore Sanfilippo fixed
+        an issue reported by "GeorgeBJ" user at Github)
+* [FIX] redis-cli --scan iteration fixed when returned cursor overflows
+        32 bit signed integer. (Ofir Luzon, Yuval Inbar)
+* [FIX] Sentinel: fixed a bug during the master switch process, where for a
+        failed conditional check, the new configuration is rewritten, during
+        a small window of time, in a corrupted way where the master is
+        also reported to be one of the slaves. This bug is rare to trigger
+        but apparently it happens in the wild, and the effect is to see
+        a replication loop where the master will try to replicate with itself.
+        A detailed explanation of the bug and its effects can be found in
+        the commit message here: https://github.com/antirez/redis/commit/c20218eb5770b2cafb12bc7092313b8358fedc0a.
+        The bug was found by Jan-Erik Rediger using a static analyzer and
+        fixed by Salvatore Sanfilippo.
+* [FIX] Sentinel lack of arity checks for certain commands.
+        (Rogerio Goncalves, Salvatore Sanfilippo)
+
+* [NEW] Replication internals rewritten in order to be more resistant to bugs.
+        The replication handshake in the slave side was rewritten as a non
+        blocking state machine. (Salvatore Sanfilippo, Oran Agra)
+* [NEW] New "replication capabilities" feature introduced in order to signal
+        from the master to the slave what are the features supported, so that
+        the master can choose the kind of replication to start (diskless or
+        not) when master and slave are of different versions. (Oran Agra,
+        Salvatore Sanfilippo)
+* [NEW] Log clients details when SLAVEOF command is received. (Salvatore
+        Sanfilippo with inputs from Nick Craver and Marc Gravell).
+
+--[ Redis 3.0.3 ] Release date: 17 Jul 2015
+
+Upgrade urgency: LOW for Redis and Sentinel.
+
+* [FIX] Fix blocking operations timeout precision when HZ is at its default
+        value (not increased) and there are thousands of clients connected
+        at the same time. This bug affected Sidekiq users that experienced
+        a very long delay for BLPOP and similar commands to return for
+        timeout. Check commit b029ff1 for more info. (Salvatore Sanfilippo)
+* [FIX] MIGRATE "creating socket: Invalid argument" error fix. Check
+        issues #2609 and #2612 for more info. (Salvatore Sanfilippo)
+* [FIX] Be able to connect to the master even when the slave is bound to
+        just the loopback interface and has no valid public address in the
+        network the master is reacahble. (Salvatore Sanfilippo)
+* [FIX] ZADD with options encoding promotion fixed. (linfangrong)
+* [FIX] Reset aof_delayed_fsync on CONFIG RESETSTATS. (Tom Kiemes)
+* [FIX] PFCOUNT key parsing in cluster fixed. (MOON_CLJ)
+* [FIX] Fix Solaris compilation of Redis 3.0. (Jan-Erik Rediger)
+
+* [NEW] Variadic EXISTS command. Now the command accepts multiple arguments
+        and returns the total count of existing keys.
+
 --[ Redis 3.0.2 ] Release date: 4 Jun 2015
 
 Upgrade urgency: HIGH for Redis because of a security issue.
@@ -607,6 +766,11 @@ non-backward compatible changes introduced in the 3.0 release:
   in the following format [1234]. Now instead it is 1234:? Where
   '?' is actually the role of the instance. M for master, S for slave, C
   if this process is a saving child (for RDB/AOF), and X for Sentinel.
+
+* The default maxmemory policy in Redis 3.0 is no longer "volatile-lru" as
+  it used to be in 2.8, but "noeviction". The policies behavior is the same
+  (but LRU eviction is much more precise in 3.0), so only the default value
+  changed. Just make sure to specify in your redis.conf what you mean.
 
 --------------------------------------------------------------------------------
 
