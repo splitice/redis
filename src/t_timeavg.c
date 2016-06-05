@@ -123,8 +123,8 @@ robj *tuTypeLookupWriteOrCreate(redisClient *c, robj *key, uint32_t timestamp) {
 
 //tahit [interval] [by] [timestamp] [key1] [key2...]
 void tahitCommand(redisClient *c) {
-	long bucket_interval, by, ts, updated_ago;
-	unsigned int bucketN, clear_buckets;
+	long bucket_interval, by, ts, bucketDiff;
+	unsigned int bucketN, bucketAbsolute;
 	long long sum;
 	time_average* ta;
 	robj *o;
@@ -145,9 +145,10 @@ void tahitCommand(redisClient *c) {
 	addReplyMultiBulkLen(c, c->argc - 4);
 
 	//the current bucket
-	bucketN = (ts / bucket_interval) % TA_BUCKETS;
+	bucketAbsolute = ts / bucket_interval;
+	bucketN = bucketAbsolute % TA_BUCKETS;
 
-	//starting at argument 4, iterate all arguments
+	//starting at argument 4, iterate all arguments: these are the keys
 	for (int i = 4; i < c->argc; i++){
 		//make sure this is a timavg (TA) key, then cast
 		o = taTypeLookupWriteOrCreate(c, c->argv[i]);
@@ -159,19 +160,23 @@ void tahitCommand(redisClient *c) {
 
 		//difference between the begining of the previously updated bucket and now.
 		//int limits the max time a value can be stale
-		updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
+		bucketDiff = bucketAbsolute - ta->last_updated;
 
-		//If updated more than one bucket interval ago, we need to clear a bucket
-		if (updated_ago >= bucket_interval){
+		//If updated more than one bucket interval ago, we need to clear a bucket in between
+		if (bucketDiff > 0){
 			//Calculate number of buckets to clear
-			clear_buckets = updated_ago / bucket_interval;
-			if (clear_buckets >= TA_BUCKETS){
-				clear_buckets = TA_BUCKETS;
+			if (bucketDiff >= TA_BUCKETS){
+				bucketDiff = TA_BUCKETS;
 			}
 
 			//Clear some buckets
-			for (unsigned int i = 1; i < clear_buckets; i++){
-				ta->buckets[(bucketN - i) % TA_BUCKETS] = 0;//todo: more efficiently
+			unsigned int f = bucketN - 1;
+			for (unsigned int i = 1; i < bucketDiff; i++){
+				ta->buckets[f] = 0;
+				if (f == 0) {
+					f = TA_BUCKETS;
+				}
+				f--;
 			}
 
 			//Set our new bucket
@@ -183,7 +188,7 @@ void tahitCommand(redisClient *c) {
 		}
 
 		//Set the time last updated
-		ta->last_updated = (uint32_t)ts;
+		ta->last_updated = bucketAbsolute;
 
 		//Redis database "stuff"
 		signalModifiedKey(c->db, c->argv[1]);
@@ -203,8 +208,8 @@ void tahitCommand(redisClient *c) {
 
 //tacalc [interval] [timestamp] [key]
 void tacalcCommand(redisClient *c){
-	long bucket_interval, ts, updated_ago;
-	unsigned int bucketN, num_buckets;
+	long bucket_interval, ts, bucketDiff;
+	unsigned int bucketN;
 	long long sum;
 	time_average* ta;
 	robj *o;
@@ -225,28 +230,32 @@ void tacalcCommand(redisClient *c){
 	ta = (time_average*)o->ptr;
 
 	//calculations
-	updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
-	bucketN = (ts / bucket_interval) % TA_BUCKETS;
-	sum = 0;
-	num_buckets = TA_BUCKETS;
+	bucketAbsolute = ts / bucket_interval;
+	bucketN = bucketAbsolute % TA_BUCKETS;
+	bucketDiff = bucketAbsolute - ta->last_updated;
 
-	//We only need to do reversed "clearing" if updated_ago is greater than one bucket
-	if (updated_ago >= bucket_interval){
-		num_buckets = updated_ago / bucket_interval;
-
+	//We only need to do reversed "clearing" if bucketDiff is greater than one bucket
+	if (bucketDiff > 0){
 		//If we need to clear all buckets, then the value will be 0
-		if (num_buckets < TA_BUCKETS){
-			//we are not clearing anything, just counting the valid ones
-			num_buckets = TA_BUCKETS - num_buckets;
-		}
-		else{
-			num_buckets = 0;
+		if (bucketDiff > TA_BUCKETS){
+			bucketDiff = TA_BUCKETS;
 		}
 	}
+	else {
+		bucketDiff = 0;//Negative guard
+	}
+
+	bucketDiff = TA_BUCKETS - bucketDiff;
 
 	//Sum up from bucketN to num_buckets (wrapped)
-	for (unsigned int i = 0; i<num_buckets; i++){
-		sum += ta->buckets[(bucketN + i) % TA_BUCKETS];
+	sum = 0;
+	unsigned int f = bucketN;
+	for (unsigned int i = 0; i<bucketDiff; i++){
+		sum += ta->buckets[f];
+		f++;
+		if (f == TA_BUCKETS) {
+			f = 0;
+		}
 	}
 	
 	//reply with sum
@@ -285,10 +294,10 @@ void tuhitCommand(redisClient *c) {
 
 		//difference between the begining of the previously updated bucket and now.
 		//int limits the max time a value can be stale
-		int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
+		int bucketDiff = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
 
-		if (updated_ago > bucket_interval){
-			unsigned int clear_buckets = updated_ago / bucket_interval;
+		if (bucketDiff > bucket_interval){
+			unsigned int clear_buckets = bucketDiff / bucket_interval;
 
 			if (clear_buckets >= TU_BUCKETS){
 				clear_buckets = TU_BUCKETS;
@@ -380,9 +389,9 @@ void tucalcCommand(redisClient *c){
 
 	unique_time_average* ta = (unique_time_average*)o->ptr;
 
-	int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
+	int bucketDiff = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
 	unsigned int bucketN = (ts / bucket_interval) % TU_BUCKETS;
-	unsigned int clear_buckets = updated_ago / bucket_interval;
+	unsigned int clear_buckets = bucketDiff / bucket_interval;
 
 	addReplyMultiBulkLen(c, 2);
 
@@ -392,7 +401,7 @@ void tucalcCommand(redisClient *c){
 		return;
 	}
 
-	if (updated_ago < 0){
+	if (bucketDiff < 0){
 		clear_buckets = 0;
 	}
 
@@ -454,10 +463,10 @@ void tuupdateCommand(redisClient *c) {
 
 		//difference between the begining of the previously updated bucket and now.
 		//int limits the max time a value can be stale
-		int updated_ago = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
+		int bucketDiff = ((ts / bucket_interval) * bucket_interval) - ta->last_updated;
 
-		if (updated_ago > bucket_interval){
-			unsigned int clear_buckets = updated_ago / bucket_interval;
+		if (bucketDiff > bucket_interval){
+			unsigned int clear_buckets = bucketDiff / bucket_interval;
 
 			if (clear_buckets >= TU_BUCKETS){
 				clear_buckets = TU_BUCKETS;
