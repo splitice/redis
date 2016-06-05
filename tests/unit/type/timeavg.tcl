@@ -149,7 +149,7 @@ start_server {
 	
     test {9. TAHIT - rare incr} {
 		for {set i 0} {$i < 200} {incr i} {
-			assert_equal 1 [r tahit 1 [expr 100+$i] mytahit$i]
+			assert_equal 1 [r tahit 1 1 [expr 100+$i] mytahit$i]
 			assert_equal 1 [r tcalc 1 [expr 100+$i] mytahit$i]
 			assert_equal 1 [r tahit 1 1 [expr 200+$i] mytahit$i]
 			assert_equal 1 [r tcalc 1 [expr 200+$i] mytahit$i]
