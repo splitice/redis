@@ -153,8 +153,8 @@ start_server {
 			assert_equal 1 [r tacalc 1 [expr 100+$i] mytahit$i]
 			assert_equal 1 [r tahit 1 1 [expr 200+$i] mytahit$i]
 			assert_equal 1 [r tacalc 1 [expr 200+$i] mytahit$i]
-			assert_equal 1 [r tahit 1 1 [expr 100+$i] mytahit$i]
-			assert_equal 1 [r tacalc 1 [expr 100+$i] mytahit$i]
+			assert_equal 1 [r tahit 1 1 [expr 300+$i] mytahit$i]
+			assert_equal 1 [r tacalc 1 [expr 300+$i] mytahit$i]
 		}
 		
         assert_equal 60 [r tacalc 1 119 mytahit1]
