@@ -170,12 +170,12 @@ void tahitCommand(redisClient *c) {
 			}
 
 			//Clear some buckets
-			unsigned int f = bucketN - 1;
-			for (unsigned int i = 1; i < bucketDiff; i++){
+			unsigned int f = bucketN;
+			for (unsigned int i = 0; i < bucketDiff; i++){
+				ta->buckets[f] = 0;
 				if (f == 0) {
 					f = TA_BUCKETS;
 				}
-				ta->buckets[f] = 0;
 				f--;
 			}
 
