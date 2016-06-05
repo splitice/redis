@@ -209,7 +209,7 @@ void tahitCommand(redisClient *c) {
 //tacalc [interval] [timestamp] [key]
 void tacalcCommand(redisClient *c){
 	long bucket_interval, ts, bucketDiff;
-	unsigned int bucketN;
+	unsigned int bucketN, bucketAbsolute;
 	long long sum;
 	time_average* ta;
 	robj *o;
