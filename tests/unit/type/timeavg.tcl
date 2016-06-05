@@ -129,4 +129,22 @@ start_server {
 		
         assert_equal 30 [r tacalc 1 179 mytahit7]
 	}
+	
+	
+    test {8. TAHIT - should equal TACALC} {
+		set f 0
+		for {set i 0} {$i < 200} {incr i} {
+			incr f
+			assert_equal $f [r tahit 1 [expr 100+$i] mytahit1]
+			assert_equal $f [r tcalc 1 [expr 100+$i] mytahit1]
+			incr f
+			assert_equal $f [r tahit 1 1 [expr 100+$i] mytahit1]
+			assert_equal $f [r tcalc 1 [expr 100+$i] mytahit1]
+			incr f
+			assert_equal $f [r tahit 1 1 [expr 100+$i] mytahit1]
+			assert_equal $f [r tcalc 1 [expr 100+$i] mytahit1]
+		}
+		
+        assert_equal 60 [r tacalc 1 119 mytahit1]
+    }
 }

@@ -251,11 +251,10 @@ void tacalcCommand(redisClient *c){
 	sum = 0;
 	unsigned int f = bucketN;
 	for (unsigned int i = 0; i<bucketDiff; i++){
-		if (f == TA_BUCKETS) {
+		sum += ta->buckets[f];
+		if (++f == TA_BUCKETS) {
 			f = 0;
 		}
-		sum += ta->buckets[f];
-		f++;
 	}
 	
 	//reply with sum
