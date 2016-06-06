@@ -168,14 +168,14 @@ start_server {
 	test {TAHIT - constant slow rate} {
 		set f 0
 		set res_hit 0
-		for {set i 0} {$i < 20} {incr i} {
+		for {set i 0} {$i <= 20} {incr i} {
 			set res_hit [r tahit 1 1 [expr 100+($i*3)] mytahit11]
 		}
 		
 		set res [r tacalc 1 160 mytahit11]
 		puts $res
 		puts $res_hit
-        assert [expr $res < 7 && $res > 6]
+        assert [expr $res <= 7 && $res >= 6]
 		assert_equal $res $res_hit
 	}
 	
