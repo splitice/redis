@@ -171,7 +171,7 @@ void tahitCommand(redisClient *c) {
 
 			//Clear some buckets
 			unsigned int f = bucketN;
-			for (unsigned int i = 0; i < bucketDiff; i++){
+			for (unsigned int g = 0; g < bucketDiff; g++){
 				ta->buckets[f] = 0;
 				if (f == 0) {
 					f = TA_BUCKETS;
@@ -185,21 +185,21 @@ void tahitCommand(redisClient *c) {
 			//Set the time last updated
 			ta->last_updated = bucketAbsolute;
 		}
-		else if(bucketDiff >= -19)
+		else if(bucketDiff > -TA_BUCKETS)
 		{
 			//Increment our bucket
 			ta->buckets[bucketN] += by;
 		}
 
 		//Redis database "stuff"
-		signalModifiedKey(c->db, c->argv[1]);
+		signalModifiedKey(c->db, c->argv[i]);
 		notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "tahit", c->argv[i], c->db->id);
 		server.dirty++;
 
 		//Calculate sum
 		sum = 0;
-		for (unsigned int i = 0; i < TA_BUCKETS; i++){
-			sum += ta->buckets[i];
+		for (unsigned int g = 0; g < TA_BUCKETS; g++){
+			sum += ta->buckets[g];
 		}
 
 		//Send reply for key (the sum)
@@ -365,7 +365,7 @@ void tuhitCommand(redisClient *c) {
 			sum += card;
 		}
 
-		signalModifiedKey(c->db, c->argv[1]);
+		signalModifiedKey(c->db, c->argv[i]);
 		notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "tuhit", c->argv[i], c->db->id);
 		server.dirty++;
 
