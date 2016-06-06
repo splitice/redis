@@ -148,11 +148,11 @@ start_server {
     }
 	
     test {9. TAHIT - rare incr} {
-		assert_equal 1 [r tahit 1 1 [expr 100] mytahit$i]
-		assert_equal 1 [r tacalc 1 [expr 100] mytahit$i]
-		assert_equal 1 [r tahit 1 1 [expr 200] mytahit$i]
-		assert_equal 1 [r tacalc 1 [expr 200] mytahit$i]
-		assert_equal 1 [r tahit 1 1 [expr 300] mytahit$i]
-		assert_equal 1 [r tacalc 1 [expr 300] mytahit$i]
+		assert_equal 1 [r tahit 1 1 [expr 100] mytahit]
+		assert_equal 1 [r tacalc 1 [expr 100] mytahit]
+		assert_equal 1 [r tahit 1 1 [expr 200] mytahit]
+		assert_equal 1 [r tacalc 1 [expr 200] mytahit]
+		assert_equal 1 [r tahit 1 1 [expr 300] mytahit]
+		assert_equal 1 [r tacalc 1 [expr 300] mytahit]
     }
 }
