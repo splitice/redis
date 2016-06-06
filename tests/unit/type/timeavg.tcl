@@ -169,8 +169,7 @@ start_server {
 		# 3 each second, total of 60
 		set f 0
 		for {set i 0} {$i < 20} {incr i} {
-			incr f
-			assert_equal $f [r tahit 1 1 [expr 100+($i*3)] mytahit11]
+			r tahit 1 1 [expr 100+($i*3)] mytahit11
 		}
 		
 		set res [r tacalc 1 160 mytahit11]
