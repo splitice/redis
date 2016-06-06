@@ -173,8 +173,6 @@ start_server {
 		}
 		
 		set res [r tacalc 1 160 mytahit11]
-		puts $res
-		puts $res_hit
         assert [expr $res <= 7 && $res >= 6]
 		assert_equal $res $res_hit
 	}
@@ -195,6 +193,6 @@ start_server {
 			assert_equal 1 [r tacalc 1 [expr 100+($i * 20)] mytahit13]
 		}
 		
-		assert_equal 20 [r tacalc 1 300 mytahit13]
+		assert_equal 1 [r tacalc 1 300 mytahit13]
 	}
 }
