@@ -242,11 +242,10 @@ void tacalcCommand(redisClient *c){
 	//We only need to do reversed "clearing" if bucketDiff is greater than one bucket
 	if (bucketDiff > TA_BUCKETS){
 		//If we need to clear all buckets, then the value will be 0
-		bucketDiff = TA_BUCKETS;
+		goto return_val;
 	}
 	else if(bucketDiff < 0) {
 		bucketDiff = 0;//Negative guard
-		goto return_val;
 	}
 
 	bucketDiff = TA_BUCKETS - bucketDiff;
