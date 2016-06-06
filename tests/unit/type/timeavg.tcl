@@ -165,7 +165,7 @@ start_server {
 		assert_equal 3 [r tacalc 1 [expr 100] mytahit10]
     }
 	
-	test {TAHIT - constant slow rate)} {
+	test {TAHIT - constant slow rate} {
 		set f 0
 		set res_hit 0
 		for {set i 0} {$i < 20} {incr i} {
@@ -179,16 +179,16 @@ start_server {
 		assert_equal $res $res_hit
 	}
 	
-	test {TAHIT - constant long)} {
+	test {TAHIT - constant long} {
 		set f 0
 		for {set i 0} {$i < 200} {incr i} {
 			r tahit 1 1 [expr 100+$i] mytahit12
 		}
 		
-		assert_equal 20 [r tacalc 1 300 mytahit12]
+		assert_equal 20 [r tacalc 1 199 mytahit12]
 	}
 	
-	test {TAHIT - constant 1)} {
+	test {TAHIT - constant 1} {
 		set f 0
 		for {set i 0} {$i < 200} {incr i} {
 			assert_equal 1 [r tahit 1 1 [expr 100+($i * 20)]] mytahit13
