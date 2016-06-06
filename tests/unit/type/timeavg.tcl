@@ -169,7 +169,7 @@ start_server {
 		set f 0
 		set res_hit 0
 		for {set i 0} {$i < 20} {incr i} {
-			set res_hit r tahit 1 1 [expr 100+($i*3)] mytahit11
+			set res_hit [r tahit 1 1 [expr 100+($i*3)] mytahit11]
 		}
 		
 		set res [r tacalc 1 160 mytahit11]
