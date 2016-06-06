@@ -190,12 +190,16 @@ void tahitCommand(redisClient *c) {
 			//Increment our bucket
 			ta->buckets[bucketN] += by;
 		}
+		else {
+			goto sum;
+		}
 
 		//Redis database "stuff"
 		signalModifiedKey(c->db, o);
 		notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "tahit", c->argv[i], c->db->id);
 		server.dirty++;
 
+sum:
 		//Calculate sum
 		sum = 0;
 		for (unsigned int g = 0; g < TA_BUCKETS; g++){
