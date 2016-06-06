@@ -173,6 +173,6 @@ start_server {
 		}
 		
 		set res [r tacalc 1 160 mytahit11]
-        assert [expr res < 7 and res > 6]
+        assert [expr $res < 7 and $res > 6]
 	}
 }
