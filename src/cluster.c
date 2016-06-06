@@ -3356,11 +3356,45 @@ void bitmapClearBit(unsigned char *bitmap, int pos) {
     bitmap[byte] &= ~(1<<bit);
 }
 
+/* Return non-zero if there is at least one master with slaves in the cluster.
+ * Otherwise zero is returned. Used by clusterNodeSetSlotBit() to set the
+ * MIGRATE_TO flag the when a master gets the first slot. */
+int clusterMastersHaveSlaves(void) {
+    dictIterator *di = dictGetSafeIterator(server.cluster->nodes);
+    dictEntry *de;
+    int slaves = 0;
+    while((de = dictNext(di)) != NULL) {
+        clusterNode *node = dictGetVal(de);
+
+        if (nodeIsSlave(node)) continue;
+        slaves += node->numslaves;
+    }
+    dictReleaseIterator(di);
+    return slaves != 0;
+}
+
 /* Set the slot bit and return the old value. */
 int clusterNodeSetSlotBit(clusterNode *n, int slot) {
     int old = bitmapTestBit(n->slots,slot);
     bitmapSetBit(n->slots,slot);
-    if (!old) n->numslots++;
+    if (!old) {
+        n->numslots++;
+        /* When a master gets its first slot, even if it has no slaves,
+         * it gets flagged with MIGRATE_TO, that is, the master is a valid
+         * target for replicas migration, if and only if at least one of
+         * the other masters has slaves right now.
+         *
+         * Normally masters are valid targerts of replica migration if:
+         * 1. The used to have slaves (but no longer have).
+         * 2. They are slaves failing over a master that used to have slaves.
+         *
+         * However new masters with slots assigned are considered valid
+         * migration tagets if the rest of the cluster is not a slave-less.
+         *
+         * See https://github.com/antirez/redis/issues/3043 for more info. */
+        if (n->numslots == 1 && clusterMastersHaveSlaves())
+            n->flags |= REDIS_NODE_MIGRATE_TO;
+    }
     return old;
 }
 
@@ -4933,7 +4967,10 @@ void readwriteCommand(redisClient *c) {
  * REDIS_CLUSTER_REDIR_DOWN_UNBOUND if the request addresses a slot which is
  * not bound to any node. In this case the cluster global state should be
  * already "down" but it is fragile to rely on the update of the global state,
- * so we also handle it here. */
+ * so we also handle it here.
+ *
+ * REDIS_CLUSTER_REDIR_DOWN_STATE if the cluster is down but the user attempts
+ * to execute a command that addresses one or more keys. */
 clusterNode *getNodeByQuery(redisClient *c, struct redisCommand *cmd, robj **argv, int argc, int *hashslot, int *error_code) {
     clusterNode *n = NULL;
     robj *firstkey = NULL;
@@ -5040,8 +5077,14 @@ clusterNode *getNodeByQuery(redisClient *c, struct redisCommand *cmd, robj **arg
     }
 
     /* No key at all in command? then we can serve the request
-     * without redirections or errors. */
+     * without redirections or errors in all the cases. */
     if (n == NULL) return myself;
+
+    /* Cluster is globally down but we got keys? We can't serve the request. */
+    if (server.cluster->state != REDIS_CLUSTER_OK) {
+        if (error_code) *error_code = REDIS_CLUSTER_REDIR_DOWN_STATE;
+        return NULL;
+    }
 
     /* Return the hashslot by reference. */
     if (hashslot) *hashslot = slot;
