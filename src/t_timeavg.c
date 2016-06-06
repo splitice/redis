@@ -188,7 +188,9 @@ void tahitCommand(redisClient *c) {
 		}
 
 		//Set the time last updated
-		ta->last_updated = bucketAbsolute;
+		if (ta->last_updated < bucketAbsolute) {
+			ta->last_updated = bucketAbsolute;
+		}
 
 		//Redis database "stuff"
 		signalModifiedKey(c->db, c->argv[1]);
