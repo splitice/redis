@@ -135,13 +135,13 @@ start_server {
 		for {set i 0} {$i < 20} {incr i} {
 			incr f
 			assert_equal $f [r tahit 1 1 [expr 100+$i] mytahit8]
-			assert_equal $f [r tcalc 1 [expr 100+$i] mytahit8]
+			assert_equal $f [r tacalc 1 [expr 100+$i] mytahit8]
 			incr f
 			assert_equal $f [r tahit 1 1 [expr 100+$i] mytahit8]
-			assert_equal $f [r tcalc 1 [expr 100+$i] mytahit8]
+			assert_equal $f [r tacalc 1 [expr 100+$i] mytahit8]
 			incr f
 			assert_equal $f [r tahit 1 1 [expr 100+$i] mytahit8]
-			assert_equal $f [r tcalc 1 [expr 100+$i] mytahit8]
+			assert_equal $f [r tacalc 1 [expr 100+$i] mytahit8]
 		}
 		
         assert_equal 60 [r tacalc 1 119 mytahit1]
