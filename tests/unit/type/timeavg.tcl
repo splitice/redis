@@ -155,4 +155,13 @@ start_server {
 		assert_equal 1 [r tahit 1 1 [expr 300] mytahit9]
 		assert_equal 1 [r tacalc 1 [expr 300] mytahit9]
     }
+	
+    test {TAHIT - backwards time} {
+		assert_equal 1 [r tahit 1 1 [expr 100] mytahit10]
+		assert_equal 1 [r tacalc 1 [expr 100] mytahit10]
+		assert_equal 2 [r tahit 1 1 [expr 99] mytahit10]
+		assert_equal 2 [r tacalc 1 [expr 99] mytahit10]
+		assert_equal 3 [r tahit 1 1 [expr 100] mytahit10]
+		assert_equal 3 [r tacalc 1 [expr 100] mytahit10]
+    }
 }
