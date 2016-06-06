@@ -166,13 +166,35 @@ start_server {
     }
 	
 	test {TAHIT - constant slow rate)} {
-		# 3 each second, total of 60
 		set f 0
+		set res_hit 0
 		for {set i 0} {$i < 20} {incr i} {
-			r tahit 1 1 [expr 100+($i*3)] mytahit11
+			set res_hit r tahit 1 1 [expr 100+($i*3)] mytahit11
 		}
 		
 		set res [r tacalc 1 160 mytahit11]
+		puts $res
+		puts $res_hit
         assert [expr $res < 7 && $res > 6]
+		assert_equal $res $res_hit
+	}
+	
+	test {TAHIT - constant long)} {
+		set f 0
+		for {set i 0} {$i < 200} {incr i} {
+			r tahit 1 1 [expr 100+$i] mytahit12
+		}
+		
+		assert_equal 20 [r tacalc 1 300 mytahit12]
+	}
+	
+	test {TAHIT - constant 1)} {
+		set f 0
+		for {set i 0} {$i < 200} {incr i} {
+			assert_equal 1 [r tahit 1 1 [expr 100+($i * 20)]] mytahit13
+			assert_equal 1 [r tacalc 1 [expr 100+($i * 20)]] mytahit13
+		}
+		
+		assert_equal 20 [r tacalc 1 300 mytahit13]
 	}
 }
