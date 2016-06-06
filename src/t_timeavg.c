@@ -215,7 +215,7 @@ sum:
 void tacalcCommand(redisClient *c){
 	long bucket_interval, ts, bucketDiff;
 	unsigned int bucketN, bucketAbsolute;
-	long long sum;
+	long long sum = 0;
 	time_average* ta;
 	robj *o;
 
@@ -240,20 +240,18 @@ void tacalcCommand(redisClient *c){
 	bucketDiff = ((long)bucketAbsolute) - ta->last_updated;
 
 	//We only need to do reversed "clearing" if bucketDiff is greater than one bucket
-	if (bucketDiff > 0){
+	if (bucketDiff > TA_BUCKETS){
 		//If we need to clear all buckets, then the value will be 0
-		if (bucketDiff > TA_BUCKETS){
-			bucketDiff = TA_BUCKETS;
-		}
+		bucketDiff = TA_BUCKETS;
 	}
-	else {
+	else if(bucketDiff < 0) {
 		bucketDiff = 0;//Negative guard
+		goto return_val;
 	}
 
 	bucketDiff = TA_BUCKETS - bucketDiff;
 
 	//Sum up from bucketN to num_buckets (wrapped)
-	sum = 0;
 	unsigned int f = bucketN;
 	for (unsigned int i = 0; i<bucketDiff; i++){
 		sum += ta->buckets[f];
@@ -261,7 +259,8 @@ void tacalcCommand(redisClient *c){
 			f = 0;
 		}
 	}
-	
+
+return_val:
 	//reply with sum
 	addReplyLongLong(c, sum);
 }
