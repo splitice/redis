@@ -191,8 +191,8 @@ start_server {
 	test {TAHIT - constant 1} {
 		set f 0
 		for {set i 0} {$i < 200} {incr i} {
-			assert_equal 1 [r tahit 1 1 [expr 100+($i * 20)]] mytahit13
-			assert_equal 1 [r tacalc 1 [expr 100+($i * 20)]] mytahit13
+			assert_equal 1 [r tahit 1 1 [expr 100+($i * 20)] mytahit13]
+			assert_equal 1 [r tacalc 1 [expr 100+($i * 20)] mytahit13]
 		}
 		
 		assert_equal 20 [r tacalc 1 300 mytahit13]

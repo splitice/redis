@@ -181,15 +181,14 @@ void tahitCommand(redisClient *c) {
 
 			//Set our new bucket
 			ta->buckets[bucketN] = by;
+
+			//Set the time last updated
+			ta->last_updated = bucketAbsolute;
 		}
-		else{
+		else if(bucketDiff >= -19)
+		{
 			//Increment our bucket
 			ta->buckets[bucketN] += by;
-		}
-
-		//Set the time last updated
-		if (ta->last_updated < bucketAbsolute) {
-			ta->last_updated = bucketAbsolute;
 		}
 
 		//Redis database "stuff"
