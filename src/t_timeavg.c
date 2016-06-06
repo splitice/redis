@@ -192,7 +192,7 @@ void tahitCommand(redisClient *c) {
 		}
 
 		//Redis database "stuff"
-		signalModifiedKey(c->db, c->argv[i]);
+		signalModifiedKey(c->db, o);
 		notifyKeyspaceEvent(REDIS_NOTIFY_LIST, "tahit", c->argv[i], c->db->id);
 		server.dirty++;
 
