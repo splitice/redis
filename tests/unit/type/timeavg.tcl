@@ -164,4 +164,16 @@ start_server {
 		assert_equal 3 [r tahit 1 1 [expr 100] mytahit10]
 		assert_equal 3 [r tacalc 1 [expr 100] mytahit10]
     }
+	
+	test {TAHIT - constant slow rate)} {
+		# 3 each second, total of 60
+		set f 0
+		for {set i 0} {$i < 20} {incr i} {
+			incr f
+			assert_equal $f [r tahit 1 1 [expr 100+($i*3)] mytahit11]
+		}
+		
+		set res [r tacalc 1 160 mytahit11]
+        assert [expr res < 7 and res > 6]
+	}
 }
