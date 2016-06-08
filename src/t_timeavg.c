@@ -44,8 +44,8 @@ Also returns the time this structure was reated
 
 The number of buckets is detimrined by a compile time constants.
 
-- TA_BUCKETS defaults to 20
-- TU_BUCKETS defaults to 6
+- TA_BUCKETS defaults to 32
+- TU_BUCKETS defaults to 8
 
 ## Time Average
 	 ---------------------------------------------

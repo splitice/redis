@@ -7,7 +7,7 @@
 #define TA_BUCKETS 32
 
 //Number of buckets in unique time average
-#define TU_BUCKETS 6
+#define TU_BUCKETS 8
 
 typedef struct {
 	uint32_t last : 24;
