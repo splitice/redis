@@ -160,12 +160,12 @@ void tahitCommand(redisClient *c) {
 
 		//difference between the begining of the previously updated bucket and now.
 		//int limits the max time a value can be stale
-		bucketDiff = ((long)bucketAbsolute) - ta->last_updated;
+		bucketDiff = ((long)bucketAbsolute) - ta->time.last_updated;
 
 		//If updated more than one bucket interval ago, we need to clear a bucket in between
-		if (ta->interval != bucket_interval){
+		if (ta->time.interval != bucket_interval){
 			bucketDiff = TA_BUCKETS;
-			ta->interval = bucket_interval;
+			ta->time.interval = bucket_interval;
 		}
 		if (bucketDiff > 0){
 			//Calculate number of buckets to clear
@@ -187,7 +187,8 @@ void tahitCommand(redisClient *c) {
 			ta->buckets[bucketN] = by;
 
 			//Set the time last updated
-			ta->last_updated = bucketAbsolute;
+			//todo: handle overflows
+			ta->time.last_updated = bucketAbsolute;
 		}
 		else if(bucketDiff > -TA_BUCKETS)
 		{
