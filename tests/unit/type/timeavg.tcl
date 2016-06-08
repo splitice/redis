@@ -13,7 +13,7 @@ start_server {
 			assert_equal $f [r tahit 1 1 [expr 100+$i] mytahit1]
 		}
 		
-        assert_equal 60 [r tacalc 1 119 mytahit1]
+        assert_equal 60 [r tacalc 119 mytahit1]
     }
 	
 	test {TAHIT - varied rate for one length} {
@@ -27,7 +27,7 @@ start_server {
 			r tahit 1 1 [expr 100+$i] mytahit2
 		}
 		
-        assert_equal 60 [r tacalc 1 119 mytahit2]
+        assert_equal 60 [r tacalc 119 mytahit2]
     }
 	
 	test {TAHIT - constant rate for 1.5 length} {
@@ -47,7 +47,7 @@ start_server {
 			r tahit 1 1 [expr 120+$i] mytahit3
 		}
 		
-        assert_equal 60 [r tacalc 1 129 mytahit3]
+        assert_equal 60 [r tacalc 129 mytahit3]
 	}
 	
 	test {TAHIT - constant rate for 2 length} {
@@ -67,7 +67,7 @@ start_server {
 			r tahit 1 1 [expr 120+$i] mytahit4
 		}
 		
-        assert_equal 60 [r tacalc 1 139 mytahit4]
+        assert_equal 60 [r tacalc 139 mytahit4]
 	}
 	
 	test {TAHIT - constant rate for 2 length with gap (aligned)} {
@@ -87,7 +87,7 @@ start_server {
 			r tahit 1 1 [expr 140+$i] mytahit5
 		}
 		
-        assert_equal 60 [r tacalc 1 159 mytahit5]
+        assert_equal 60 [r tacalc 159 mytahit5]
 	}
 	
 	test {TAHIT - constant rate for 2 length with gap (not aligned, less than buckets)} {
@@ -107,7 +107,7 @@ start_server {
 			r tahit 1 1 [expr 130+$i] mytahit6
 		}
 		
-        assert_equal 60 [r tacalc 1 149 mytahit6]
+        assert_equal 60 [r tacalc 149 mytahit6]
 	}
 	
 	test {TAHIT - constant rate for 2 length with gap (not aligned, more than buckets)} {
@@ -127,7 +127,7 @@ start_server {
 			r tahit 1 1 [expr 150+$i] mytahit7
 		}
 		
-        assert_equal 30 [r tacalc 1 179 mytahit7]
+        assert_equal 30 [r tacalc 179 mytahit7]
 	}
 	
     test {TAHIT - should equal TACALC} {
@@ -135,34 +135,34 @@ start_server {
 		for {set i 0} {$i < 20} {incr i} {
 			incr f
 			assert_equal $f [r tahit 1 1 [expr 100+$i] mytahit8]
-			assert_equal $f [r tacalc 1 [expr 100+$i] mytahit8]
+			assert_equal $f [r tacalc [expr 100+$i] mytahit8]
 			incr f
 			assert_equal $f [r tahit 1 1 [expr 100+$i] mytahit8]
-			assert_equal $f [r tacalc 1 [expr 100+$i] mytahit8]
+			assert_equal $f [r tacalc [expr 100+$i] mytahit8]
 			incr f
 			assert_equal $f [r tahit 1 1 [expr 100+$i] mytahit8]
-			assert_equal $f [r tacalc 1 [expr 100+$i] mytahit8]
+			assert_equal $f [r tacalc [expr 100+$i] mytahit8]
 		}
 		
-        assert_equal 60 [r tacalc 1 119 mytahit1]
+        assert_equal 60 [r tacalc 119 mytahit1]
     }
 	
     test {TAHIT - rare incr} {
 		assert_equal 1 [r tahit 1 1 [expr 100] mytahit9]
-		assert_equal 1 [r tacalc 1 [expr 100] mytahit9]
+		assert_equal 1 [r tacalc [expr 100] mytahit9]
 		assert_equal 1 [r tahit 1 1 [expr 200] mytahit9]
-		assert_equal 1 [r tacalc 1 [expr 200] mytahit9]
+		assert_equal 1 [r tacalc [expr 200] mytahit9]
 		assert_equal 1 [r tahit 1 1 [expr 300] mytahit9]
-		assert_equal 1 [r tacalc 1 [expr 300] mytahit9]
+		assert_equal 1 [r tacalc [expr 300] mytahit9]
     }
 	
     test {TAHIT - backwards time} {
 		assert_equal 1 [r tahit 1 1 [expr 100] mytahit10]
-		assert_equal 1 [r tacalc 1 [expr 100] mytahit10]
+		assert_equal 1 [r tacalc [expr 100] mytahit10]
 		assert_equal 2 [r tahit 1 1 [expr 99] mytahit10]
-		assert_equal 2 [r tacalc 1 [expr 99] mytahit10]
+		assert_equal 2 [r tacalc [expr 99] mytahit10]
 		assert_equal 3 [r tahit 1 1 [expr 100] mytahit10]
-		assert_equal 3 [r tacalc 1 [expr 100] mytahit10]
+		assert_equal 3 [r tacalc [expr 100] mytahit10]
     }
 	
 	test {TAHIT - constant slow rate} {
@@ -172,7 +172,7 @@ start_server {
 			set res_hit [r tahit 1 1 [expr 100+($i*3)] mytahit11]
 		}
 		
-		set res [r tacalc 1 160 mytahit11]
+		set res [r tacalc 160 mytahit11]
         assert [expr $res <= 7 && $res >= 6]
 		assert_equal $res $res_hit
 	}
@@ -183,16 +183,16 @@ start_server {
 			r tahit 1 1 [expr 100+$i] mytahit12
 		}
 		
-		assert_equal 20 [r tacalc 1 199 mytahit12]
+		assert_equal 20 [r tacalc 199 mytahit12]
 	}
 	
 	test {TAHIT - constant 1} {
 		set f 0
 		for {set i 0} {$i < 200} {incr i} {
 			assert_equal 1 [r tahit 1 1 [expr 100+($i * 20)] mytahit13]
-			assert_equal 1 [r tacalc 1 [expr 100+($i * 20)] mytahit13]
+			assert_equal 1 [r tacalc [expr 100+($i * 20)] mytahit13]
 		}
 		
-		assert_equal 1 [r tacalc 1 300 mytahit13]
+		assert_equal 1 [r tacalc 300 mytahit13]
 	}
 }
