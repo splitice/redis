@@ -67,7 +67,7 @@ start_server {
 			r tahit 1 1 [expr 1024+64$i] mytahit5
 		}
 		
-        assert_equal 96 [r tacalc 1024+64+31 mytahit5]
+        assert_equal 96 [r tacalc [expr 1024+64+31] mytahit5]
 	}
 	
     test {TAHIT - should equal TACALC} {
