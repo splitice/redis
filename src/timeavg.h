@@ -4,7 +4,7 @@
 #define __TIMEAVG_H
 
 //Number of buckets in time average
-#define TA_BUCKETS 20
+#define TA_BUCKETS 32
 
 //Number of buckets in unique time average
 #define TU_BUCKETS 6
