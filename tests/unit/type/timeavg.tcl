@@ -63,10 +63,11 @@ start_server {
 		}
 		for {set i 0} {$i < 32} {incr i} {
 			r tahit 1 1 [expr 1024+64+$i] mytahit5
-			r tahit 1 1 [expr 1024+64$i] mytahit5
-			r tahit 1 1 [expr 1024+64$i] mytahit5
+			r tahit 1 1 [expr 1024+64+$i] mytahit5
+			set last [r tahit 1 1 [expr 1024+64+$i] mytahit5]
 		}
 		
+        assert_equal 96 $last
         assert_equal 96 [r tacalc [expr 1024+64+31] mytahit5]
 	}
 	
@@ -109,11 +110,11 @@ start_server {
 		set f 0
 		set res_hit 0
 		for {set i 0} {$i <= 32} {incr i} {
-			set res_hit [r tahit 1 1 [expr 1024+($i*3)] mytahit11]
+			set res_hit [r tahit 1 1 [expr 1024+($i*4)] mytahit11]
 		}
 		
 		set res [r tacalc [expr 1024+(32*3)-1] mytahit11]
-        assert [expr $res <= 7 && $res >= 6]
+		assert_equal 8 $res_hit
 		assert_equal $res $res_hit
 	}
 	
