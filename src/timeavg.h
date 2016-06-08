@@ -10,13 +10,13 @@
 #define TU_BUCKETS 8
 
 typedef struct {
-	uint32_t last : 24;
-	uint8_t  interval     : 8;
+	uint32_t last     : 24;
+	uint8_t  interval : 8;
 } ta_time;
 
 typedef struct {
 	uint32_t buckets[TA_BUCKETS];
-	ta_time time;
+	ta_time  time;
 } time_average;
 
 typedef struct {
