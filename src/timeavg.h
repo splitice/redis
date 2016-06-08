@@ -10,14 +10,15 @@
 #define TU_BUCKETS 6
 
 typedef struct {
-	uint32_t last_updated;
 	uint32_t buckets[TA_BUCKETS];
+	uint32_t last_updated : 24;
+	uint8_t  interval     : 8;
 } time_average;
 
 typedef struct {
 	uint32_t last_updated;
 	uint32_t created_time;
-	robj* buckets[TU_BUCKETS];
+	robj*    buckets[TU_BUCKETS];
 } unique_time_average;
 
 #endif

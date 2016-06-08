@@ -15,7 +15,7 @@ Signal that the event has happened, increment each [key] by the the value of [by
 Returns the new sum over time value for each key (bulk reply) based on the current [timestamp]. The [interval] 
 between buckets (how much time does a bucket represent) must be provided for this calculation.
 
-## tacalc [interval] [timestamp] [key]
+## tacalc [timestamp] [key]
 Returns the sum over time value for a given key  based on the current [timestamp]. The [interval] between buckets
 (how much time does a bucket represent) must be provided for this calculation.
 
@@ -163,6 +163,10 @@ void tahitCommand(redisClient *c) {
 		bucketDiff = ((long)bucketAbsolute) - ta->last_updated;
 
 		//If updated more than one bucket interval ago, we need to clear a bucket in between
+		if (ta->interval != bucket_interval){
+			bucketDiff = TA_BUCKETS;
+			ta->interval = bucket_interval;
+		}
 		if (bucketDiff > 0){
 			//Calculate number of buckets to clear
 			if (bucketDiff >= TA_BUCKETS){
@@ -211,18 +215,13 @@ sum:
 	}
 }
 
-//tacalc [interval] [timestamp] [key]
+//tacalc [timestamp] [key]
 void tacalcCommand(redisClient *c){
-	long bucket_interval, ts, bucketDiff;
+	long ts, bucketDiff;
 	unsigned int bucketN, bucketAbsolute;
 	long long sum = 0;
 	time_average* ta;
 	robj *o;
-
-
-	//the bucket interval (time per bucket)
-	if ((getLongFromObjectOrReply(c, c->argv[1], &bucket_interval, NULL) != REDIS_OK))
-		return;
 
 	//the current timestamp
 	if ((getLongFromObjectOrReply(c, c->argv[2], &ts, NULL) != REDIS_OK))
@@ -235,7 +234,7 @@ void tacalcCommand(redisClient *c){
 	ta = (time_average*)o->ptr;
 
 	//calculations
-	bucketAbsolute = ts / bucket_interval;
+	bucketAbsolute = ts / ta->interval;
 	bucketN = bucketAbsolute % TA_BUCKETS;
 	bucketDiff = ((long)bucketAbsolute) - ta->last_updated;
 
