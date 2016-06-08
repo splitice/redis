@@ -124,7 +124,8 @@ robj *tuTypeLookupWriteOrCreate(redisClient *c, robj *key, uint32_t timestamp) {
 //tahit [interval] [by] [timestamp] [key1] [key2...]
 void tahitCommand(redisClient *c) {
 	long bucket_interval, by, ts, bucketDiff;
-	unsigned int bucketN, bucketAbsolute;
+	unsigned int bucketN;
+	uint32_t bucketAbsolute;
 	long long sum;
 	time_average* ta;
 	robj *o;
@@ -219,17 +220,18 @@ sum:
 //tacalc [timestamp] [key]
 void tacalcCommand(redisClient *c){
 	long ts, bucketDiff;
-	unsigned int bucketN, bucketAbsolute;
+	unsigned int bucketN;
+	uint32_t bucketAbsolute;
 	long long sum = 0;
 	time_average* ta;
 	robj *o;
 
 	//the current timestamp
-	if ((getLongFromObjectOrReply(c, c->argv[2], &ts, NULL) != REDIS_OK))
+	if ((getLongFromObjectOrReply(c, c->argv[1], &ts, NULL) != REDIS_OK))
 		return;
 
 	//the key
-	if ((o = lookupKeyReadOrReply(c, c->argv[3], shared.nokeyerr)) == NULL || checkType(c, o, REDIS_TAVG)){
+	if ((o = lookupKeyReadOrReply(c, c->argv[2], shared.nokeyerr)) == NULL || checkType(c, o, REDIS_TAVG)){
 		return;
 	}
 	ta = (time_average*)o->ptr;
