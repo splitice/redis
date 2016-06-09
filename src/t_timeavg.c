@@ -125,7 +125,7 @@ robj *tuTypeLookupWriteOrCreate(redisClient *c, robj *key, uint32_t timestamp) {
 }
 
 //tahit [interval] [by] [timestamp] [key1] [key2...]
-void _tahitCommand(redisClient *c, bool expire) {
+void _tahitCommand(redisClient *c, int expire) {
 	long bucket_interval, by, ts, bucketDiff;
 	unsigned int bucketN;
 	uint32_t bucketAbsolute;
@@ -227,11 +227,11 @@ sum:
 }
 
 void tahitCommand(redisClient *c) {
-	_tahitCommand(c, false);
+	_tahitCommand(c, 0);
 }
 
 void tahitxCommand(redisClient *c) {
-	_tahitCommand(c, true);
+	_tahitCommand(c, 1);
 }
 
 //tacalc [timestamp] [key]
