@@ -81,7 +81,7 @@ robj *rdbLoadTavgObject(rio *rdb) {
     time_average *zl = zmalloc(sizeof(time_average));
 	/* this is also reads num buckets, as its packed in the 32bits */
 	if (rioRead(rdb, &zl->time, sizeof(zl->time)) == 0) return NULL;
-	if (rioRead(rdb, zl->buckets, sizeof(uint32_t) * TA_BUCKETS) == 0) return NULL;
+	if (rioRead(rdb, zl->buckets, sizeof(uint16_t) * TA_BUCKETS) == 0) return NULL;
 
     return createObject(REDIS_TAVG, zl);
 }
@@ -631,7 +631,7 @@ int rdbSaveObject(rio *rdb, robj *o) {
 
 		if (rdbWriteRaw(rdb, &ta->time, sizeof(ta->time)) == -1) return -1;
 
-		if (rdbWriteRaw(rdb, ta->buckets, sizeof(uint32_t)* TA_BUCKETS) == -1) return -1;
+		if (rdbWriteRaw(rdb, ta->buckets, sizeof(uint16_t)* TA_BUCKETS) == -1) return -1;
 
         nwritten += l;
     }

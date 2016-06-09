@@ -15,7 +15,7 @@ typedef struct {
 } ta_time;
 
 typedef struct {
-	uint32_t buckets[TA_BUCKETS];
+	uint16_t buckets[TA_BUCKETS];
 	ta_time  time;
 } time_average;
 
