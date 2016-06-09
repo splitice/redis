@@ -15,6 +15,9 @@ Signal that the event has happened, increment each [key] by the the value of [by
 Returns the new sum over time value for each key (bulk reply) based on the current [timestamp]. The [interval] 
 between buckets (how much time does a bucket represent) must be provided for this calculation.
 
+## tahitx [interval] [by] [timestamp] [key1] [key2...]
+Same as tahit, but expiring automatically
+
 ## tacalc [timestamp] [key]
 Returns the sum over time value for a given key  based on the current [timestamp]. The [interval] between buckets
 (how much time does a bucket represent) must be provided for this calculation.
@@ -122,11 +125,11 @@ robj *tuTypeLookupWriteOrCreate(redisClient *c, robj *key, uint32_t timestamp) {
 }
 
 //tahit [interval] [by] [timestamp] [key1] [key2...]
-void tahitCommand(redisClient *c) {
+void _tahitCommand(redisClient *c, bool expire) {
 	long bucket_interval, by, ts, bucketDiff;
 	unsigned int bucketN;
 	uint32_t bucketAbsolute;
-	long long sum;
+	long long sum, expireTime;
 	time_average* ta;
 	robj *o;
 
@@ -148,6 +151,7 @@ void tahitCommand(redisClient *c) {
 	//the current bucket
 	bucketAbsolute = ts / bucket_interval;
 	bucketN = bucketAbsolute % TA_BUCKETS;
+	expireTime = mstime() + (bucket_interval * TA_BUCKETS);
 
 	//starting at argument 4, iterate all arguments: these are the keys
 	for (int i = 4; i < c->argc; i++){
@@ -157,6 +161,11 @@ void tahitCommand(redisClient *c) {
 			addReply(c, shared.nullbulk);
 			continue;
 		}
+		
+		if (expire){
+			setExpire(c->db,c->argv[i],expireTime);
+		}
+		
 		ta = (time_average*)o->ptr;
 
 		//difference between the begining of the previously updated bucket and now.
@@ -215,6 +224,14 @@ sum:
 		//Send reply for key (the sum)
 		addReplyBulkLongLong(c, sum);
 	}
+}
+
+void tahitCommand(redisClient *c) {
+	_tahitCommand(c, false);
+}
+
+void tahitxCommand(redisClient *c) {
+	_tahitCommand(c, true);
 }
 
 //tacalc [timestamp] [key]

@@ -1557,6 +1557,7 @@ void pfcountCommand(redisClient *c);
 void pfmergeCommand(redisClient *c);
 void pfdebugCommand(redisClient *c);
 void tahitCommand(redisClient *c);
+void tahitxCommand(redisClient *c);
 void tacalcCommand(redisClient *c);
 void tuhitCommand(redisClient *c);
 void tucalcCommand(redisClient *c);
