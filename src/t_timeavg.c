@@ -124,7 +124,6 @@ robj *tuTypeLookupWriteOrCreate(redisClient *c, robj *key, uint32_t timestamp) {
 	return o;
 }
 
-//tahit [interval] [by] [timestamp] [key1] [key2...]
 void _tahitCommand(redisClient *c, int expire) {
 	long bucket_interval, by, ts, bucketDiff;
 	unsigned int bucketN;
@@ -163,7 +162,7 @@ void _tahitCommand(redisClient *c, int expire) {
 		}
 		
 		if (expire){
-			setExpire(c->db,c->argv[i],expireTime);
+			setExpire(c->db, c->argv[i], expireTime);
 		}
 		
 		ta = (time_average*)o->ptr;
@@ -226,10 +225,12 @@ sum:
 	}
 }
 
+//tahit [interval] [by] [timestamp] [key1] [key2...]
 void tahitCommand(redisClient *c) {
 	_tahitCommand(c, 0);
 }
 
+//tahitx [interval] [by] [timestamp] [key1] [key2...]
 void tahitxCommand(redisClient *c) {
 	_tahitCommand(c, 1);
 }
