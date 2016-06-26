@@ -150,7 +150,7 @@ void _tahitCommand(redisClient *c, int expire) {
 	//the current bucket
 	bucketAbsolute = ts / bucket_interval;
 	bucketN = bucketAbsolute % TA_BUCKETS;
-	expireTime = mstime() + (bucket_interval * TA_BUCKETS);
+	expireTime = mstime() + (bucket_interval * TA_BUCKETS * 1000);
 
 	//starting at argument 4, iterate all arguments: these are the keys
 	for (int i = 4; i < c->argc; i++){
