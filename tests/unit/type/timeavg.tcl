@@ -35,17 +35,17 @@ start_server {
 		assert_equal $f [r tahitx 2 1 [expr 1024+$i] mytahitxb]
 	}
 		
-        assert_equal 32 [r tacalc 1 mytahitxb]
+        assert_equal 32 [r tacalc 2 mytahitxb]
     }
     
     test {TAHITX - 1 rate for 30 length} {
 	set f 0
 	for {set i 0} {$i < 32} {incr i} {
 		incr f
-		assert_equal $f [r tahitx 2 1 [expr 1024+$i] mytahitxa]
+		assert_equal $f [r tahitx 30 1 [expr 1024+$i] mytahitxc]
 	}
 		
-        assert_equal 32 [r ttl mytahitxa]
+        assert_equal 32 [r tacalc 30 mytahitxc]
     }
 
     test {TAHIT - constant rate for one length} {
