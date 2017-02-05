@@ -47,6 +47,16 @@ start_server {
 		
         assert_equal 32 [r tacalc 30 mytahitxc]
     }
+    
+    test {TAHITX - real like times} {
+	set f 0
+	for {set i 0} {$i < 32} {incr i} {
+		incr f
+		assert_equal $f [r tahitx 30 1 [expr 1486331402+$i] mytahitxc]
+	}
+		
+        assert_equal 32 [r tacalc 30 mytahitxc]
+    }
 
     test {TAHIT - constant rate for one length} {
         # 3 each second, total of 60
