@@ -125,7 +125,8 @@ robj *tuTypeLookupWriteOrCreate(redisClient *c, robj *key, uint32_t timestamp) {
 }
 
 void _tahitCommand(redisClient *c, int expire) {
-	long bucket_interval, by, ts, bucketDiff;
+	long bucket_interval, by, bucketDiff;
+	long long ts;
 	unsigned int bucketN;
 	uint32_t bucketAbsolute;
 	long long sum, expireTime;
@@ -141,7 +142,7 @@ void _tahitCommand(redisClient *c, int expire) {
 		return;
 
 	//the current timestamp
-	if ((getLongFromObjectOrReply(c, c->argv[3], &ts, NULL) != REDIS_OK))
+	if ((getLongLongFromObjectOrReply(c, c->argv[3], &ts, NULL) != REDIS_OK))
 		return;
 	
 	//all the remaining arguments are keys, there will be one reply per key
@@ -239,7 +240,8 @@ void tahitxCommand(redisClient *c) {
 
 //tacalc [timestamp] [key]
 void tacalcCommand(redisClient *c){
-	long ts, bucketDiff;
+	long bucketDiff;
+	long long ts;
 	unsigned int bucketN;
 	uint32_t bucketAbsolute;
 	long long sum = 0;
@@ -247,7 +249,7 @@ void tacalcCommand(redisClient *c){
 	robj *o;
 
 	//the current timestamp
-	if ((getLongFromObjectOrReply(c, c->argv[1], &ts, NULL) != REDIS_OK))
+	if ((getLongLongFromObjectOrReply(c, c->argv[1], &ts, NULL) != REDIS_OK))
 		return;
 
 	//the key
@@ -288,13 +290,14 @@ return_val:
 
 
 void tuhitCommand(redisClient *c) {
-	long bucket_interval, ts;
+	long bucket_interval;
+	long long ts;
 
 	//the bucket
 	if ((getLongFromObjectOrReply(c, c->argv[1], &bucket_interval, NULL) != REDIS_OK))
 		return;
 
-	if ((getLongFromObjectOrReply(c, c->argv[3], &ts, NULL) != REDIS_OK))
+	if ((getLongLongFromObjectOrReply(c, c->argv[3], &ts, NULL) != REDIS_OK))
 		return;
 
 	uint32_t timestamp = (uint32_t)ts;
@@ -398,12 +401,13 @@ void tuhitCommand(redisClient *c) {
 }
 
 void tucalcCommand(redisClient *c){
-	long bucket_interval, ts;
+	long bucket_interval;
+	long long ts;
 
 	if ((getLongFromObjectOrReply(c, c->argv[1], &bucket_interval, NULL) != REDIS_OK))
 		return;
 
-	if ((getLongFromObjectOrReply(c, c->argv[2], &ts, NULL) != REDIS_OK))
+	if ((getLongLongFromObjectOrReply(c, c->argv[2], &ts, NULL) != REDIS_OK))
 		return;
 
 	robj *o;
@@ -460,13 +464,14 @@ void tucalcCommand(redisClient *c){
 }
 
 void tuupdateCommand(redisClient *c) {
-	long bucket_interval, ts;
+	long bucket_interval;
+	long long ts;
 
 	//the bucket
 	if ((getLongFromObjectOrReply(c, c->argv[1], &bucket_interval, NULL) != REDIS_OK))
 		return;
 
-	if ((getLongFromObjectOrReply(c, c->argv[3], &ts, NULL) != REDIS_OK))
+	if ((getLongLongFromObjectOrReply(c, c->argv[3], &ts, NULL) != REDIS_OK))
 		return;
 
 	uint32_t timestamp = (uint32_t)ts;
