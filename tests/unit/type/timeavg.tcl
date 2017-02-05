@@ -4,17 +4,27 @@ start_server {
 
     test {TAHITX - constant rate for one length} {
         # 3 each second, total of 60
-		set f 0
-		for {set i 0} {$i < 32} {incr i} {
-			incr f
-			assert_equal $f [r tahitx 1 1 [expr 1024+$i] mytahitx1]
-			incr f
-			assert_equal $f [r tahitx 1 1 [expr 1024+$i] mytahitx1]
-			incr f
-			assert_equal $f [r tahitx 1 1 [expr 1024+$i] mytahitx1]
-		}
+	set f 0
+	for {set i 0} {$i < 32} {incr i} {
+		incr f
+		assert_equal $f [r tahitx 1 1 [expr 1024+$i] mytahitx1]
+		incr f
+		assert_equal $f [r tahitx 1 1 [expr 1024+$i] mytahitx1]
+		incr f
+		assert_equal $f [r tahitx 1 1 [expr 1024+$i] mytahitx1]
+	}
 		
-        assert_equal 32 [r ttl mytahitx1]
+        assert_equal 96 [r ttl mytahitx1]
+    }
+    
+    test {TAHITX - 1 rate for one length} {
+	set f 0
+	for {set i 0} {$i < 32} {incr i} {
+		incr f
+		assert_equal $f [r tahitx 1 1 [expr 1024+$i] mytahitxa]
+	}
+		
+        assert_equal 32 [r ttl mytahitxa]
     }
 
     test {TAHIT - constant rate for one length} {
