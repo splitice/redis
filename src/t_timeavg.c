@@ -177,13 +177,14 @@ void _tahitCommand(redisClient *c, int expire) {
 		bucketAbsolute %= 16777216;
 		bucketDiff = ((int)bucketAbsolute) - ta->time.last;
 
-		//If updated more than one bucket interval ago, we need to clear a bucket in between
+		//Clear if bucket interval changes
 		if (ta->time.interval != bucket_interval){
-			assert(bucketDiff != 0);
 			bucketDiff = TA_BUCKETS;
 			ta->time.interval = bucket_interval;
 		}
-		else if (bucketDiff > 0){
+		
+		//If updated more than one bucket interval ago, we need to clear a bucket in between
+		if (bucketDiff > 0){
 			//Calculate number of buckets to clear
 			if (bucketDiff >= TA_BUCKETS){
 				bucketDiff = TA_BUCKETS;
@@ -263,9 +264,9 @@ void tacalcCommand(redisClient *c){
 	ta = (time_average*)o->ptr;
 
 	//calculations
-	bucketAbsolute = (ts / ta->time.interval) % 16777216;
+	bucketAbsolute = ts / ta->time.interval;
 	bucketN = bucketAbsolute % TA_BUCKETS;
-	bucketDiff = (int)bucketAbsolute - ta->time.last;
+	bucketDiff = ((int)bucketAbsolute % 16777216) - ta->time.last;
 
 	//We only need to do reversed "clearing" if bucketDiff is greater than one bucket
 	if (bucketDiff > TA_BUCKETS){
