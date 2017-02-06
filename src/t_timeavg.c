@@ -172,7 +172,7 @@ void _tahitCommand(redisClient *c, int expire) {
 
 		//difference between the begining of the previously updated bucket and now.
 		//int limits the max time a value can be stale
-		bucketDiff = bucketAbsolute - ta->time.last;
+		bucketDiff = (long)bucketAbsolute - ta->time.last;
 
 		//If updated more than one bucket interval ago, we need to clear a bucket in between
 		if (ta->time.interval != bucket_interval){
@@ -240,7 +240,7 @@ void tahitxCommand(redisClient *c) {
 
 //tacalc [timestamp] [key]
 void tacalcCommand(redisClient *c){
-	uint32_t bucketDiff;
+	int bucketDiff;
 	long long ts;
 	unsigned int bucketN;
 	uint32_t bucketAbsolute;
@@ -261,7 +261,7 @@ void tacalcCommand(redisClient *c){
 	//calculations
 	bucketAbsolute = (ts / ta->time.interval) % 16777216;
 	bucketN = bucketAbsolute % TA_BUCKETS;
-	bucketDiff = (uint32_t)(bucketAbsolute - ta->time.last);
+	bucketDiff = (int)bucketAbsolute - ta->time.last;
 
 	//We only need to do reversed "clearing" if bucketDiff is greater than one bucket
 	if (bucketDiff > TA_BUCKETS){
@@ -276,7 +276,7 @@ void tacalcCommand(redisClient *c){
 
 	//Sum up from bucketN to num_buckets (wrapped)
 	unsigned int f = bucketN;
-	for (unsigned int i = 0; i<bucketDiff; i++){
+	for (int i = 0; i<bucketDiff; i++){
 		sum += ta->buckets[f];
 		if (++f == TA_BUCKETS) {
 			f = 0;
