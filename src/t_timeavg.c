@@ -149,7 +149,7 @@ void _tahitCommand(redisClient *c, int expire) {
 	addReplyMultiBulkLen(c, c->argc - 4);
 
 	//the current bucket
-	bucketAbsolute = ts / bucket_interval;
+	bucketAbsolute = (ts / bucket_interval) % 16777216;
 	bucketN = bucketAbsolute % TA_BUCKETS;
 	if (expire){
 		expireTime = mstime() + (bucket_interval * TA_BUCKETS * 1000);
@@ -172,7 +172,7 @@ void _tahitCommand(redisClient *c, int expire) {
 
 		//difference between the begining of the previously updated bucket and now.
 		//int limits the max time a value can be stale
-		bucketDiff = ((long)bucketAbsolute) - ta->time.last;
+		bucketDiff = bucketAbsolute - ta->time.last;
 
 		//If updated more than one bucket interval ago, we need to clear a bucket in between
 		if (ta->time.interval != bucket_interval){
@@ -240,7 +240,7 @@ void tahitxCommand(redisClient *c) {
 
 //tacalc [timestamp] [key]
 void tacalcCommand(redisClient *c){
-	long bucketDiff;
+	uint32_t bucketDiff;
 	long long ts;
 	unsigned int bucketN;
 	uint32_t bucketAbsolute;
@@ -261,7 +261,7 @@ void tacalcCommand(redisClient *c){
 	//calculations
 	bucketAbsolute = ts / ta->time.interval;
 	bucketN = bucketAbsolute % TA_BUCKETS;
-	bucketDiff = ((long)bucketAbsolute) - ta->time.last;
+	bucketDiff = (uint32_t)((bucketAbsolute % 16777216) - ta->time.last;
 
 	//We only need to do reversed "clearing" if bucketDiff is greater than one bucket
 	if (bucketDiff > TA_BUCKETS){
