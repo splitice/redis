@@ -15,7 +15,7 @@ start_server {
 		}
 		
         assert_equal [r ttl mytahitx1] 32
-        assert_equal [r tacalc 1056 mytahitx1] 93
+        assert_equal [r tacalc 1056 mytahitx1] 96
     }
     
     test {TAHITX - 1 rate for one length} {
@@ -55,7 +55,7 @@ start_server {
 			assert_equal $f [r tahitx 30 1 [expr 1486331402+$i] mytahitxc]
 		}
 		
-        assert_equal [r tacalc 1056 mytahitxc] 31
+        assert_equal [r tacalc 1056 mytahitxc] 32
     }
 
     test {TAHIT - constant rate for one length} {
