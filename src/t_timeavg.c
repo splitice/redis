@@ -259,9 +259,9 @@ void tacalcCommand(redisClient *c){
 	ta = (time_average*)o->ptr;
 
 	//calculations
-	bucketAbsolute = ts / ta->time.interval;
+	bucketAbsolute = (ts / ta->time.interval) % 16777216;
 	bucketN = bucketAbsolute % TA_BUCKETS;
-	bucketDiff = (uint32_t)((bucketAbsolute % 16777216) - ta->time.last);
+	bucketDiff = (uint32_t)(bucketAbsolute - ta->time.last);
 
 	//We only need to do reversed "clearing" if bucketDiff is greater than one bucket
 	if (bucketDiff > TA_BUCKETS){
