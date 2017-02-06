@@ -74,6 +74,7 @@ The number of buckets is detimrined by a compile time constants.
 #include "redis.h"
 #include "hyperloglog.h"
 #include <math.h>
+#include <assert.h>
 #include "timeavg.h"
 
 static char *invalid_hll_err = "-INVALIDOBJ Corrupted HLL object detected\r\n";
@@ -125,7 +126,8 @@ robj *tuTypeLookupWriteOrCreate(redisClient *c, robj *key, uint32_t timestamp) {
 }
 
 void _tahitCommand(redisClient *c, int expire) {
-	long bucket_interval, by, bucketDiff;
+	long bucket_interval, by;
+	int bucketDiff;
 	long long ts;
 	unsigned int bucketN;
 	uint32_t bucketAbsolute;
@@ -172,10 +174,11 @@ void _tahitCommand(redisClient *c, int expire) {
 		
 		//difference between the begining of the previously updated bucket and now.
 		//int limits the max time a value can be stale
-		bucketDiff = (long)(bucketAbsolute  % 16777216) - ta->time.last;
+		bucketDiff = (((int)(bucketAbsolute  % 16777216)) - ta->time.last) % TA_BUCKETS;
 
 		//If updated more than one bucket interval ago, we need to clear a bucket in between
 		if (ta->time.interval != bucket_interval){
+			assert(bucketDiff == 0)
 			bucketDiff = TA_BUCKETS;
 			ta->time.interval = bucket_interval;
 		}
@@ -187,7 +190,7 @@ void _tahitCommand(redisClient *c, int expire) {
 
 			//Clear some buckets
 			unsigned int f = bucketN;
-			for (unsigned int g = 0; g < bucketDiff; g++){
+			for (int g = 0; g < bucketDiff; g++){
 				ta->buckets[f] = 0;
 				if (f == 0) {
 					f = TA_BUCKETS;
