@@ -10,8 +10,8 @@
 #define TU_BUCKETS 8
 
 typedef struct {
-	uint32_t last     : 24;
-	uint8_t  interval : 8;
+	uint32_t last;
+	uint16_t  interval;
 } ta_time;
 
 typedef struct {

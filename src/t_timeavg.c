@@ -163,13 +163,13 @@ void _tahitCommand(redisClient *c, int expire) {
 			addReply(c, shared.nullbulk);
 			continue;
 		}
+		ta = (time_average*)o->ptr;
 		
+		//If required set expire on this key
 		if (expire){
 			setExpire(c->db, c->argv[i], expireTime);
 		}
 		
-		ta = (time_average*)o->ptr;
-
 		//difference between the begining of the previously updated bucket and now.
 		//int limits the max time a value can be stale
 		bucketDiff = (long)(bucketAbsolute  % 16777216) - ta->time.last;
