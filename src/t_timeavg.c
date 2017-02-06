@@ -178,7 +178,7 @@ void _tahitCommand(redisClient *c, int expire) {
 
 		//If updated more than one bucket interval ago, we need to clear a bucket in between
 		if (ta->time.interval != bucket_interval){
-			assert(bucketDiff == 0);
+			assert(bucketDiff != 0);
 			bucketDiff = TA_BUCKETS;
 			ta->time.interval = bucket_interval;
 		}
