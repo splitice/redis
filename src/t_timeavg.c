@@ -149,7 +149,7 @@ void _tahitCommand(redisClient *c, int expire) {
 	addReplyMultiBulkLen(c, c->argc - 4);
 
 	//the current bucket
-	bucketAbsolute = (ts / bucket_interval) % 16777216;
+	bucketAbsolute = ts / bucket_interval;
 	bucketN = bucketAbsolute % TA_BUCKETS;
 	if (expire){
 		expireTime = mstime() + (bucket_interval * TA_BUCKETS * 1000);
@@ -172,7 +172,7 @@ void _tahitCommand(redisClient *c, int expire) {
 
 		//difference between the begining of the previously updated bucket and now.
 		//int limits the max time a value can be stale
-		bucketDiff = (long)bucketAbsolute - ta->time.last;
+		bucketDiff = (long)(bucketAbsolute  % 16777216) - ta->time.last;
 
 		//If updated more than one bucket interval ago, we need to clear a bucket in between
 		if (ta->time.interval != bucket_interval){
