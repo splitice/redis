@@ -47,6 +47,19 @@ start_server {
 		
         assert_equal [r tacalc 1056 mytahitxc] 32
     }
+	
+	test {TAHITX - real like times repeating} {
+		set f 0
+		for {set i 0} {$i < 32} {incr i} {
+			incr f
+			assert_equal $f [r tahitx 30 1 [expr 1486331402+$i] mytahitxc]
+			assert_equal $f [r tahitx 30 1 [expr 1486331402+$i] mytahitxc]
+			assert_equal $f [r tahitx 30 1 [expr 1486331402+$i] mytahitxc]
+			assert_equal $f [r tahitx 30 1 [expr 1486331402+$i] mytahitxc]
+		}
+		
+        assert_equal [r tacalc 1056 mytahitxc] 128
+    }
     
     test {TAHITX - real like times} {
 		set f 0
