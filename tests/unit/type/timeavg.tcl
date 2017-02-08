@@ -57,7 +57,7 @@ start_server {
 			r tahitx 30 2 [expr 1486331402+$i] mytahitxc
 		}
 		
-        assert_equal [r tacalc 1056 mytahitxc] 128
+        assert_equal [r tacalc 1486331434 mytahitxc] 128
     }
     
     test {TAHITX - real like times} {
@@ -67,7 +67,7 @@ start_server {
 			assert_equal $f [r tahitx 30 1 [expr 1486331402+$i] mytahitxc]
 		}
 		
-        assert_equal [r tacalc 1056 mytahitxc] 32
+        assert_equal [r tacalc 1486331434 mytahitxc] 32
     }
 
     test {TAHIT - constant rate for one length} {
